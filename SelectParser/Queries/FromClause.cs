@@ -4,12 +4,10 @@ namespace SelectParser.Queries
 {
     public class FromClause
     {
-        public FromClause(string table)
-        {
-            Table = table;
-            Alias = new None();
-        }
-        public FromClause(string table, string alias)
+        public FromClause(string table) : this(table, new None()) { }
+        public FromClause(string table, string alias) : this(table, (Option<string>)alias) { }
+
+        public FromClause(string table, Option<string> alias)
         {
             Table = table;
             Alias = alias;

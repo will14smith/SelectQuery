@@ -3,7 +3,7 @@ using OneOf;
 
 namespace SelectParser.Queries
 {
-    public abstract class Expression : OneOfBase<Expression.StringLiteral,Expression.NumberLiteral,Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.In, Expression.Like>
+    public abstract class Expression : OneOfBase<Expression.StringLiteral,Expression.NumberLiteral,Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.In, Expression.Like>
     {
         public class StringLiteral : Expression
         {
@@ -61,6 +61,21 @@ namespace SelectParser.Queries
             public BinaryOperator Operator { get; }
             public Expression Left { get; }
             public Expression Right { get; }
+        }
+        public class Between : Expression
+        {
+            public Between(bool negate, Expression expression, Expression lower, Expression upper)
+            {
+                Negate = negate;
+                Expression = expression;
+                Lower = lower;
+                Upper = upper;
+            }
+
+            public bool Negate { get; }
+            public Expression Expression { get; }
+            public Expression Lower { get; }
+            public Expression Upper { get; }
         }
         public class In : Expression
         {

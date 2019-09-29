@@ -4,12 +4,10 @@ namespace SelectParser.Queries
 {
     public class Column
     {
-        public Column(Expression expression)
-        {
-            Expression = expression;
-            Alias = new None();
-        }
-        public Column(Expression expression, string alias)
+        public Column(Expression expression) : this(expression, new None()) { }
+        public Column(Expression expression, string alias) : this(expression, (Option<string>)alias) { }
+
+        public Column(Expression expression, Option<string> alias)
         {
             Expression = expression;
             Alias = alias;

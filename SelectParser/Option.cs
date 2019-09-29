@@ -10,5 +10,8 @@ namespace SelectParser
 
         public static implicit operator Option<T>(T t) => new Option<T>(t);
         public static implicit operator Option<T>(None t) => new Option<T>();
+
+        public bool IsSome => IsT0;
+        public bool IsNone => IsT1;
     }
 }

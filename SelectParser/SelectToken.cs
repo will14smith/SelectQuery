@@ -18,6 +18,9 @@
         Limit,
         // operators
         Dot,
+        Comma,
+        LeftBracket,
+        RightBracket,
         Star,
 
         Not,
@@ -40,5 +43,6 @@
         Between,
         In,
         Like,
+        Escape,
     }
 }

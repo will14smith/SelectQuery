@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Security.Cryptography.X509Certificates;
 using Superpower;
 using Superpower.Model;
 using Superpower.Parsers;
@@ -23,11 +21,13 @@ namespace SelectParser
             { "TRUE", SelectToken.BooleanLiteral },
             { "FALSE", SelectToken.BooleanLiteral },
 
+            { "NOT", SelectToken.Not },
             { "AND", SelectToken.And },
             { "OR", SelectToken.Or },
             { "BETWEEN", SelectToken.Between },
             { "IN", SelectToken.In },
             { "LIKE", SelectToken.Like },
+            { "ESCAPE", SelectToken.Escape },
         };
 
         private static readonly SelectToken[] SimpleOperator = new SelectToken[128];
@@ -42,7 +42,7 @@ namespace SelectParser
                 .IgnoreThen(Span.EqualTo("''").Value('\'').Try().Or(Character.ExceptIn('\'', '\r', '\n')).Many())
                 .Then(s => Character.EqualTo('\'').Value(new string(s)));
 
-        public static readonly TextParser<TextSpan> NumberLiteral =
+        private static readonly TextParser<TextSpan> NumberLiteral =
             Numerics.Integer
                 .Then(n => Character.EqualTo('.').IgnoreThen(Numerics.Integer).OptionalOrDefault()
                     .Select(f => f == TextSpan.None ? n : new TextSpan(n.Source, n.Position, n.Length + f.Length + 1)));
@@ -54,12 +54,15 @@ namespace SelectParser
         private static readonly TextParser<SelectToken> Equal = Span.EqualTo("==").Value(SelectToken.Equal);
         private static readonly TextParser<SelectToken> NotEqual = Span.EqualTo("!=").Or(Span.EqualTo("<>")).Value(SelectToken.NotEqual);
 
-        private static readonly TextParser<SelectToken> CompoundOperator = 
+        private static readonly TextParser<SelectToken> CompoundOperator =
             And.Or(Or.Or(GreaterOrEqual.Or(Equal.Or(LesserOrEqual.Try().Or(NotEqual)))));
 
         static SelectTokenizer()
         {
             SimpleOperator['.'] = SelectToken.Dot;
+            SimpleOperator[','] = SelectToken.Comma;
+            SimpleOperator['('] = SelectToken.LeftBracket;
+            SimpleOperator[')'] = SelectToken.RightBracket;
             SimpleOperator['*'] = SelectToken.Star;
 
             SimpleOperator['!'] = SelectToken.Not;

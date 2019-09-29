@@ -92,8 +92,12 @@ namespace SelectParser.Tests
         [Theory]
 
         [InlineData(".", SelectToken.Dot)]
+        [InlineData(",", SelectToken.Comma)]
+        [InlineData("(", SelectToken.LeftBracket)]
+        [InlineData(")", SelectToken.RightBracket)]
         [InlineData("*", SelectToken.Star)]
 
+        [InlineData("NOT", SelectToken.Not)]
         [InlineData("!", SelectToken.Not)]
         [InlineData("-", SelectToken.Negate)]
 
@@ -118,6 +122,7 @@ namespace SelectParser.Tests
         [InlineData("BETWEEN", SelectToken.Between)]
         [InlineData("IN", SelectToken.In)]
         [InlineData("LIKE", SelectToken.Like)]
+        [InlineData("ESCAPE", SelectToken.Escape)]
         public void TestOperatorsAreParsedCorrectly(string input, SelectToken expected)
         {
             var tokenizer = new SelectTokenizer();
