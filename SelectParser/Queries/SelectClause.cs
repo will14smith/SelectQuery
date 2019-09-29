@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using OneOf;
 
-namespace SelectQuery.Queries
+namespace SelectParser.Queries
 {
     public abstract class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
     {

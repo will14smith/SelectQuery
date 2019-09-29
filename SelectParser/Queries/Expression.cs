@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using OneOf;
 
-namespace SelectQuery.Queries
+namespace SelectParser.Queries
 {
     public abstract class Expression : OneOfBase<Expression.StringLiteral,Expression.NumberLiteral,Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.In, Expression.Like>
     {

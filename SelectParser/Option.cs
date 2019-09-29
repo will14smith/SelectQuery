@@ -1,7 +1,7 @@
 ﻿using OneOf;
 using OneOf.Types;
 
-namespace SelectQuery
+namespace SelectParser
 {
     public class Option<T> : OneOfBase<T, None>
     {

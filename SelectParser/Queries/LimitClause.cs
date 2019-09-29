@@ -1,4 +1,4 @@
-﻿namespace SelectQuery.Queries
+﻿namespace SelectParser.Queries
 {
     public class LimitClause
     {

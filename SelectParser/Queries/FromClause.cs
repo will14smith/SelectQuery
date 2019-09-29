@@ -1,6 +1,6 @@
 ﻿using OneOf.Types;
 
-namespace SelectQuery.Queries
+namespace SelectParser.Queries
 {
     public class FromClause
     {
