@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <PackageReference Include="OneOf" Version="2.1.150" />
+    <PackageReference Include="Superpower" Version="2.3.0" />
   </ItemGroup>
 
 </Project>
