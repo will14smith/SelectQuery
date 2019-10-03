@@ -9,6 +9,6 @@ namespace SelectParser.Queries
             Columns = columns;
         }
 
-        public IReadOnlyList<(Expression Express, OrderDirection Direction)> Columns { get; }
+        public IReadOnlyList<(Expression Expression, OrderDirection Direction)> Columns { get; }
     }
 }

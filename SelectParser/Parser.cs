@@ -216,7 +216,20 @@ namespace SelectParser
             select new WhereClause(expression);
         #endregion
 
-        // TODO ORDER BY
+        #region order by
+
+        private static readonly TokenListParser<SelectToken, (Expression Expression, OrderDirection Direction)> OrderByColumn =
+            from column in Expression
+            from direction in Token.EqualTo(SelectToken.Asc).Select(_ => OrderDirection.Ascending)
+                .Or(Token.EqualTo(SelectToken.Desc).Select(_ => OrderDirection.Descending)).OptionalOrDefault(OrderDirection.Ascending)
+            select (column, direction);
+
+        public static readonly TokenListParser<SelectToken, OrderClause> OrderByClause =
+            from orderBy in Token.Sequence(SelectToken.Order, SelectToken.By)
+            from columns in OrderByColumn.ManyDelimitedBy(Token.EqualTo(SelectToken.Comma))
+            select new OrderClause(columns);
+
+        #endregion
 
         #region limit
         public static readonly TokenListParser<SelectToken, LimitClause> LimitClause =
@@ -229,8 +242,9 @@ namespace SelectParser
             from @select in SelectClause
             from @from in FromClause
             from @where in WhereClause.Select(x => (Option<WhereClause>)x).OptionalOrDefault(new None())
+            from order in OrderByClause.Select(x => (Option<OrderClause>)x).OptionalOrDefault(new None())
             from limit in LimitClause.Select(x => (Option<LimitClause>)x).OptionalOrDefault(new None())
-            select new Query(@select, @from, @where, new None(), limit);
+            select new Query(@select, @from, @where, order, limit);
 
         private static string ParseIdentifier(Token<SelectToken> token)
         {

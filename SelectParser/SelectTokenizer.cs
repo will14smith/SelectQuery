@@ -17,6 +17,8 @@ namespace SelectParser
             { "ORDER", SelectToken.Order },
             { "BY", SelectToken.By },
             { "LIMIT", SelectToken.Limit },
+            { "ASC", SelectToken.Asc },
+            { "DESC", SelectToken.Desc },
 
             { "TRUE", SelectToken.BooleanLiteral },
             { "FALSE", SelectToken.BooleanLiteral },

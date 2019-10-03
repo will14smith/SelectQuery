@@ -16,6 +16,8 @@
         Order,
         By,
         Limit,
+        Asc,
+        Desc,
         // operators
         Dot,
         Comma,

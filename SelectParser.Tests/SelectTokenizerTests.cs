@@ -13,6 +13,8 @@ namespace SelectParser.Tests
         [InlineData("ORDER", SelectToken.Order)]
         [InlineData("BY", SelectToken.By)]
         [InlineData("LIMIT", SelectToken.Limit)]
+        [InlineData("ASC", SelectToken.Asc)]
+        [InlineData("DESC", SelectToken.Desc)]
         [InlineData("select", SelectToken.Select)]
         public void TestKeywordsAreParsedCorrectly(string input, SelectToken expected)
         {
