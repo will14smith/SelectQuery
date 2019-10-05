@@ -9,12 +9,12 @@ namespace SelectParser.Queries
 
         public class List : SelectClause
         {
-            public List(IReadOnlyCollection<Column> columns)
+            public List(IReadOnlyList<Column> columns)
             {
                 Columns = columns;
             }
 
-            public IReadOnlyCollection<Column> Columns { get; }
+            public IReadOnlyList<Column> Columns { get; }
         }
     }
 }

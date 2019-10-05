@@ -79,14 +79,14 @@ namespace SelectParser.Queries
         }
         public class In : Expression
         {
-            public In(Expression expression, IReadOnlyCollection<Expression> matches)
+            public In(Expression expression, IReadOnlyList<Expression> matches)
             {
                 Expression = expression;
                 Matches = matches;
             }
 
             public Expression Expression { get; }
-            public IReadOnlyCollection<Expression> Matches { get; }
+            public IReadOnlyList<Expression> Matches { get; }
         }
         public class Like : Expression
         {
