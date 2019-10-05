@@ -1,8 +1,7 @@
 ﻿using System;
-using SelectQuery.Inputs;
 using SelectQuery.Results;
 
-namespace SelectQuery
+namespace SelectQuery.Distribution
 {
     public class Distributor
     {

@@ -9,8 +9,6 @@ namespace SelectQuery.Workers
 {
     public class Worker
     {
-        private readonly Planner _planner = new Planner();
-
         private readonly IUnderlyingExecutor _underlying;
         private readonly IResultsStorer _resultsStorer;
 
@@ -22,7 +20,7 @@ namespace SelectQuery.Workers
 
         public Result Query(WorkerInput input)
         {
-            var plan = _planner.Plan(input.Query);
+            var plan = input.Plan;
 
             var underlyingResults = _underlying.Execute(plan.UnderlyingQuery, input.DataLocation);
             var orderedResults = OrderResults(plan.Order, underlyingResults);
@@ -76,12 +74,8 @@ namespace SelectQuery.Workers
 
         private static IReadOnlyList<ResultRow> ProjectResults(IEnumerable<ResultRow> results)
         {
-            return results.Select(row =>
-            {
-                // TODO skip this if the plan didn't have any
-                var nonInternalFields = row.Fields.Where(field => !field.Key.StartsWith("__internal__"));
-                return new ResultRow(nonInternalFields.ToDictionary());
-            }).ToList();
+            // TODO do we need any worker side projection?
+            return results.ToList();
         }
     }
 }

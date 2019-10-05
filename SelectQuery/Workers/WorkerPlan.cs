@@ -3,18 +3,14 @@ using SelectParser.Queries;
 
 namespace SelectQuery.Workers
 {
-    internal class Plan
+    public class WorkerPlan
     {
-        public Plan(Query inputQuery, Query underlyingQuery, Option<OrderClause> order, Option<LimitClause> limit)
+        public WorkerPlan(Query underlyingQuery, Option<OrderClause> order, Option<LimitClause> limit)
         {
-            InputQuery = inputQuery;
             UnderlyingQuery = underlyingQuery;
             Order = order;
             Limit = limit;
         }
-
-        // input
-        public Query InputQuery { get; }
 
         // underlying
         public Query UnderlyingQuery { get; }

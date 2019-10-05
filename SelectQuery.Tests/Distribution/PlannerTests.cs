@@ -1,9 +1,9 @@
-﻿using SelectQuery.Workers;
+﻿using SelectQuery.Distribution;
 using Xunit;
 using static SelectQuery.Tests.OptionTestHelpers;
 using static SelectQuery.Tests.QueryTestHelpers;
 
-namespace SelectQuery.Tests.Workers
+namespace SelectQuery.Tests.Distribution
 {
     public class PlannerTests
     {

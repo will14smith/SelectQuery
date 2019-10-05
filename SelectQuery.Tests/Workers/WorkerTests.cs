@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using OneOf.Types;
+using SelectParser.Queries;
 using SelectQuery.Results;
 using SelectQuery.Tests.Fakes;
 using SelectQuery.Workers;
@@ -11,10 +13,12 @@ namespace SelectQuery.Tests.Workers
 {
     public class WorkerTests
     {
+        private static readonly Query Query = ParseQuery("SELECT * FROM table");
+
         [Fact]
         public void BasicQuery_ShouldReturnUnderlyingResults()
         {
-            var query = ParseQuery("SELECT * FROM table");
+            var plan = new WorkerPlan(Query, new None(), new None());
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "a")),
@@ -24,20 +28,20 @@ namespace SelectQuery.Tests.Workers
             var worker = new Worker(underlying, new FakeResultsStorer());
             var expectedResults = underlyingResults;
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
 
         [Fact]
-        public void Query_ShouldPassDataLocationToUnderlyingExecutor()
+        public void Query_ShouldPassQueryAndDataLocationToUnderlyingExecutor()
         {
-            var query = ParseQuery("SELECT * FROM table");
+            var plan = new WorkerPlan(Query, new None(), new None());
             var dataLocation = new Uri("http://localhost/data");
-            var underlying = new FakeUnderlyingExecutor(new ResultRow[0]) { ExpectedDataLocation = dataLocation };
+            var underlying = new FakeUnderlyingExecutor(new ResultRow[0]) { ExpectedQuery = Query, ExpectedDataLocation = dataLocation };
             var worker = new Worker(underlying, new FakeResultsStorer());
 
-            worker.Query(new WorkerInput(query, dataLocation));
+            worker.Query(new WorkerInput(plan, dataLocation));
 
             // assert is done in `underlying`
         }
@@ -46,7 +50,7 @@ namespace SelectQuery.Tests.Workers
         [Fact]
         public void OrderedQuery_ShouldOrderResults()
         {
-            var query = ParseQuery("SELECT id, name FROM table ORDER BY name");
+            var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Ascending)), new None());
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "b")),
@@ -62,14 +66,14 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[2],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
         public void OrderedQuery_Multiple_ShouldOrderResults()
         {
-            var query = ParseQuery("SELECT id, name, other FROM table ORDER BY name, other");
+            var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Ascending), ("other", OrderDirection.Ascending)), new None());
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "a"), ("other", 2)),
@@ -85,14 +89,14 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[2],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
         public void OrderedQuery_Desc_ShouldOrderResults()
         {
-            var query = ParseQuery("SELECT id, name FROM table ORDER BY name DESC");
+            var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Descending)), new None());
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "b")),
@@ -108,14 +112,14 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[1],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
         public void OrderedQuery_Missing_ShouldOrderResults()
         {
-            var query = ParseQuery("SELECT id, name FROM table ORDER BY name");
+            var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Ascending)), new None());
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1)),
@@ -131,30 +135,17 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[2],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
-        }
-
-        [Fact]
-        public void OrderedQuery_ShouldPassTransformedQueryToUnderlyingExecutor()
-        {
-            var query = ParseQuery("SELECT id, name FROM table ORDER BY name");
-            var underlying = new FakeUnderlyingExecutor(new ResultRow[0]) { ExpectedQuery = ParseQuery("SELECT id, name FROM table") };
-            var worker = new Worker(underlying, new FakeResultsStorer());
-
-            worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
-
-            // assert is done in `underlying`
         }
         #endregion
 
         #region limiting
-
         [Fact]
         public void LimitedQuery_Limit_ShouldLimitResults()
         {
-            var query = ParseQuery("SELECT id, name FROM table LIMIT 1");
+            var plan = new WorkerPlan(Query, new None(), new LimitClause(1));
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "b")),
@@ -166,14 +157,14 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[0],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
         public void LimitedQuery_LimitHigherThanCount_ShouldLimitResults()
         {
-            var query = ParseQuery("SELECT id, name FROM table LIMIT 10");
+            var plan = new WorkerPlan(Query, new None(), new LimitClause(10));
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "b")),
@@ -185,14 +176,14 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[0],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
         public void LimitedQuery_LimitOffset_ShouldLimitResults()
         {
-            var query = ParseQuery("SELECT id, name FROM table LIMIT 1 OFFSET 1");
+            var plan = new WorkerPlan(Query, new None(), new LimitClause(1, 1));
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "b")),
@@ -205,14 +196,14 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[1],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
         public void LimitedQuery_LimitAndOrder_ShouldLimitResultsAfterOrdering()
         {
-            var query = ParseQuery("SELECT id, name FROM table ORDER BY name DESC LIMIT 1");
+            var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Descending)), new LimitClause(1));
             var underlyingResults = new[]
             {
                 CreateRow(("id", 1), ("name", "a")),
@@ -225,49 +216,17 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[1],
             };
 
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
+            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
-
-        [Fact]
-        public void LimitQuery_ShouldPassTransformedQueryToUnderlyingExecutor()
-        {
-            var query = ParseQuery("SELECT id, name FROM table LIMIT 1 OFFSET 1");
-            var underlying = new FakeUnderlyingExecutor(new ResultRow[0]) { ExpectedQuery = ParseQuery("SELECT id, name FROM table LIMIT 2") };
-            var worker = new Worker(underlying, new FakeResultsStorer());
-
-            worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
-
-            // assert is done in `underlying`
-        }
-
+        
         #endregion
 
-        #region projecting
-
-        [Fact]
-        public void Query_WithInternalColumns_ShouldProjectResults()
+        private static OrderClause Order(params (string Key, OrderDirection Direction)[] columns)
         {
-            var query = ParseQuery("SELECT id FROM table ORDER BY name");
-            var underlyingResults = new[]
-            {
-                CreateRow(("id", 1), ("__internal__order_0", "b")),
-            };
-            var underlying = new FakeUnderlyingExecutor(underlyingResults) {   ExpectedQuery = ParseQuery("SELECT id, name as __internal__order_0 FROM table") };
-            var worker = new Worker(underlying, new FakeResultsStorer());
-            var expectedResults = new[]
-            {
-                CreateRow(("id", 1))
-            };
-
-            var results = worker.Query(new WorkerInput(query, new Uri("http://localhost/data")));
-
-            AssertResultsEqual(expectedResults, results);
+            return new OrderClause(columns.Select(x => ((Expression)new Expression.Identifier(x.Key), x.Direction)).ToList());
         }
-
-        #endregion
-
         private static ResultRow CreateRow(params (string Key, object Value)[] fields)
         {
             return new ResultRow(fields.ToDictionary(x => x.Key, x => x.Value));

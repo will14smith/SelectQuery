@@ -1,6 +1,6 @@
 ﻿using SelectParser.Queries;
 
-namespace SelectQuery.Inputs
+namespace SelectQuery.Distribution
 {
     public class DistributorInput
     {

@@ -1,17 +1,16 @@
 ﻿using System;
-using SelectParser.Queries;
 
 namespace SelectQuery.Workers
 {
     public class WorkerInput
     {
-        public WorkerInput(Query query, Uri dataLocation)
+        public WorkerInput(WorkerPlan plan, Uri dataLocation)
         {
-            Query = query;
+            Plan = plan;
             DataLocation = dataLocation;
         }
 
-        public Query Query { get; }
+        public WorkerPlan Plan { get; }
         public Uri DataLocation { get; }
     }
 }

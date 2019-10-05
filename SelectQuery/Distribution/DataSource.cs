@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using OneOf;
 
-namespace SelectQuery.Inputs
+namespace SelectQuery.Distribution
 {
     public abstract class DataSource : OneOfBase<DataSource.List, DataSource.Prefix>
     {

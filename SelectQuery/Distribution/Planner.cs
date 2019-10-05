@@ -3,11 +3,11 @@ using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
 
-namespace SelectQuery.Workers
+namespace SelectQuery.Distribution
 {
     internal class Planner
     {
-        public Plan Plan(Query input)
+        public DistributorPlan Plan(Query input)
         {
             SelectClause underlyingSelect = null;
             Option<LimitClause> underlyingLimit = new None();
@@ -44,7 +44,7 @@ namespace SelectQuery.Workers
 
             var underlying = new Query(underlyingSelect, input.From, input.Where, new None(), underlyingLimit);
 
-            return new Plan(input, underlying, order, limit);
+            return new DistributorPlan(input, underlying, order, limit);
         }
 
         private class PlanOrderBuilder
