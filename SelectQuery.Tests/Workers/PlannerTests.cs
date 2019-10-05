@@ -31,6 +31,18 @@ namespace SelectQuery.Tests.Workers
             AssertNone(plan.Limit);
         }
 
+        [Fact]
+        public void QueryWithOrderingAndLimits_Underlying_ShouldNotLimit()
+        {
+            var query = ParseQuery("SELECT id, name FROM table ORDER BY name LIMIT 10");
+            var planner = new Planner();
+
+            var plan = planner.Plan(query);
+
+            var expectedUnderlyingQuery = ParseQuery("SELECT id, name FROM table");
+            AssertEqual(expectedUnderlyingQuery, plan.UnderlyingQuery);
+        }
+
         #region Query with ordering
         [Fact]
         public void QueryWithOrderingOnSelectStar_UnderlyingQuery_ShouldRemoveOrderingAndProjectExtraColumn()
