@@ -1,7 +1,15 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using SelectParser;
+using SelectParser.Queries;
 using SelectQuery.Distribution;
 using SelectQuery.Lambda.Implementations;
+using SelectQuery.Lambda.Inputs;
+using SelectQuery.Lambda.Outputs;
 using SelectQuery.Results;
+using Superpower;
 
 namespace SelectQuery.Lambda
 {
@@ -37,11 +45,38 @@ namespace SelectQuery.Lambda
             return new S3ResultStorage();
         }
 
-        public Task<Result> Handler(DistributorInput input)
+        public Task<PublicResult> Handler(DistributorPublicInput input)
         {
-            var result = _distributor.Query(input);
+            var queryInput = ConvertInput(input);
 
-            return Task.FromResult(result);
+            var result = _distributor.Query(queryInput);
+
+            return Task.FromResult(ConvertOutput(result));
+        }
+
+        private static DistributorInput ConvertInput(DistributorPublicInput input)
+        {
+            var query = ParseQuery(input.Query);
+            var source = input.DataSource.Prefix == null 
+                ? (DataSource) new DataSource.List(input.DataSource.Locations ?? new List<Uri>()) 
+                : new DataSource.Prefix(input.DataSource.Prefix);
+
+            return new DistributorInput(query, source);
+        }
+
+        private static PublicResult ConvertOutput(Result result)
+        {
+            return result.Match(
+                direct => new PublicResult { Rows = direct.Rows.Select(x => x.Fields).ToList() },
+                indirect => new PublicResult { Location = indirect.Location }
+            );
+        }
+
+        private static Query ParseQuery(string input)
+        {
+            var tokenizer = new SelectTokenizer();
+            var tokens = tokenizer.Tokenize(input);
+            return Parser.Query.Parse(tokens);
         }
     }
 }

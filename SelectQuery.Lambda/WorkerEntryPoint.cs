@@ -1,7 +1,14 @@
-﻿using System.Threading.Tasks;
+﻿using System.Linq;
+using System.Threading.Tasks;
+using OneOf.Types;
+using SelectParser;
+using SelectParser.Queries;
 using SelectQuery.Lambda.Implementations;
+using SelectQuery.Lambda.Inputs;
+using SelectQuery.Lambda.Outputs;
 using SelectQuery.Results;
 using SelectQuery.Workers;
+using Superpower;
 
 namespace SelectQuery.Lambda
 {
@@ -31,11 +38,43 @@ namespace SelectQuery.Lambda
             return new S3ResultStorage();
         }
 
-        public Task<Result> Handler(WorkerInput input)
+        public Task<PublicResult> Handler(WorkerPublicInput input)
         {
-            var result = _worker.Query(input);
+            var queryInput = ConvertInput(input);
 
-            return Task.FromResult(result);
+            var result = _worker.Query(queryInput);
+
+            return Task.FromResult(ConvertOutput(result));
+        }
+
+        private static WorkerInput ConvertInput(WorkerPublicInput input)
+        {
+            var underlyingQuery = Parse(Parser.Query, input.UnderlyingQuery);
+            var order = string.IsNullOrEmpty(input.Order)
+                ? (Option<OrderClause>)new None()
+                : Parse(Parser.OrderByClause, input.Order);
+            var limit = string.IsNullOrEmpty(input.Limit)
+                ? (Option<LimitClause>)new None()
+                : Parse(Parser.LimitClause, input.Limit);
+
+            var plan = new WorkerPlan(underlyingQuery, order, limit);
+
+            return new WorkerInput(plan, input.DataLocation);
+        }
+
+        private static PublicResult ConvertOutput(Result result)
+        {
+            return result.Match(
+                direct => new PublicResult { Rows = direct.Rows.Select(x => x.Fields).ToList() },
+                indirect => new PublicResult { Location = indirect.Location }
+            );
+        }
+
+        private static T Parse<T>(TokenListParser<SelectToken, T> parser, string input)
+        {
+            var tokenizer = new SelectTokenizer();
+            var tokens = tokenizer.Tokenize(input);
+            return parser.Parse(tokens);
         }
     }
 }
