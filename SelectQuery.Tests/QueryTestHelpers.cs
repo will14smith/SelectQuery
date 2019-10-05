@@ -24,6 +24,14 @@ namespace SelectQuery.Tests
             AssertEqual(expected.Limit, actual.Limit);
         }
 
+        public static void AssertEqual(Option<SelectClause> expected, Option<SelectClause> actual)
+        {
+            Assert.Equal(expected.IsSome, actual.IsSome);
+            if (expected.IsSome)
+            {
+                AssertEqual(expected.AsT0, actual.AsT0);
+            }
+        }
         public static void AssertEqual(SelectClause expected, SelectClause actual)
         {
             expected.Switch(

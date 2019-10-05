@@ -28,11 +28,32 @@ namespace SelectQuery.Tests.Workers
 
             AssertEqual(query, plan.UnderlyingQuery);
             AssertNone(plan.Order);
-            AssertNone(plan.Projection);
             AssertNone(plan.Limit);
         }
 
         #region Query with ordering
+        [Fact]
+        public void QueryWithOrderingOnSelectStar_UnderlyingQuery_ShouldRemoveOrderingAndProjectExtraColumn()
+        {
+            var query = ParseQuery("SELECT * FROM table WHERE x = 1 ORDER BY y");
+            var planner = new Planner();
+
+            var plan = planner.Plan(query);
+
+            var expected = ParseQuery("SELECT table.*, y as __internal__order_0 FROM table WHERE x = 1");
+            AssertEqual(expected, plan.UnderlyingQuery);
+        }
+        [Fact]
+        public void QueryWithOrderingOnSelectStar_Order_ShouldNotBeNone()
+        {
+            var query = ParseQuery("SELECT * FROM table WHERE x = 1 ORDER BY y");
+            var planner = new Planner();
+
+            var plan = planner.Plan(query);
+
+            AssertEqual("ORDER BY __internal__order_0", plan.Order);
+        }
+
         [Fact]
         public void QueryWithOrderingOnProjectedColumn_UnderlyingQuery_ShouldRemoveOrdering()
         {
@@ -45,6 +66,17 @@ namespace SelectQuery.Tests.Workers
             AssertEqual(expected, plan.UnderlyingQuery);
         }
         [Fact]
+        public void QueryWithOrderingOnProjectedColumn_Order_ShouldNotBeNone()
+        {
+            var query = ParseQuery("SELECT a, y FROM table WHERE x = 1 ORDER BY y");
+            var planner = new Planner();
+
+            var plan = planner.Plan(query);
+
+            AssertEqual("ORDER BY y", plan.Order);
+        }
+
+        [Fact]
         public void QueryWithOrderingOnUnprojectedExpression_UnderlyingQuery_ShouldRemoveOrderingAndProjectExtraColumn()
         {
             var query = ParseQuery("SELECT a FROM table WHERE x = 1 ORDER BY y");
@@ -52,7 +84,7 @@ namespace SelectQuery.Tests.Workers
 
             var plan = planner.Plan(query);
 
-            var expected = ParseQuery("SELECT a, y FROM table WHERE x = 1");
+            var expected = ParseQuery("SELECT a, y as __internal__order_0 FROM table WHERE x = 1");
             AssertEqual(expected, plan.UnderlyingQuery);
         }
         [Fact]
@@ -63,18 +95,7 @@ namespace SelectQuery.Tests.Workers
 
             var plan = planner.Plan(query);
 
-            AssertEqual("ORDER BY y", plan.Order);
-        }
-        [Fact]
-        public void QueryWithOrderingOnUnprojectedExpression_Projection_ShouldHaveOriginalColumns()
-        {
-            var query = ParseQuery("SELECT a FROM table WHERE x = 1 ORDER BY y");
-            var planner = new Planner();
-
-            var plan = planner.Plan(query);
-
-            var projection = AssertSome(plan.Projection);
-            AssertEqual(query.Select, projection);
+            AssertEqual("ORDER BY __internal__order_0", plan.Order);
         }
         #endregion
 
