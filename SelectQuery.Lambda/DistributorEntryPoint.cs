@@ -45,13 +45,13 @@ namespace SelectQuery.Lambda
             return new S3ResultStorage();
         }
 
-        public Task<PublicResult> Handler(DistributorPublicInput input)
+        public async Task<PublicResult> Handler(DistributorPublicInput input)
         {
             var queryInput = ConvertInput(input);
 
-            var result = _distributor.Query(queryInput);
+            var result =await  _distributor.QueryAsync(queryInput);
 
-            return Task.FromResult(ConvertOutput(result));
+            return ConvertOutput(result);
         }
 
         private static DistributorInput ConvertInput(DistributorPublicInput input)

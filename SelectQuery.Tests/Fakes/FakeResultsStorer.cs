@@ -1,13 +1,14 @@
 ﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using SelectQuery.Results;
 
 namespace SelectQuery.Tests.Fakes
 {
     public class FakeResultsStorer : IResultsStorer
     {
-        public Result Store(IReadOnlyList<ResultRow> rows)
+        public Task<Result> StoreAsync(IReadOnlyList<ResultRow> rows)
         {
-            return new Result.Direct(rows);
+            return Task.FromResult<Result>(new Result.Direct(rows));
         }
     }
 }

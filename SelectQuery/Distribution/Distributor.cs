@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using SelectQuery.Results;
 
 namespace SelectQuery.Distribution
@@ -20,23 +21,23 @@ namespace SelectQuery.Distribution
             _resultsFetcher = resultsFetcher;
             _resultsStorer = resultsStorer;
         }
-
-
-        public Result Query(DistributorInput input)
+        
+        public async Task<Result> QueryAsync(DistributorInput input)
         {
             var plan = _planner.Plan(input.Query);
 
-            var sources = _sourceResolver.Resolve(input.Source);
-            var workerResultSets = _workerExecutor.Execute(plan, sources);
+            var sources = await _sourceResolver.ResolveAsync(input.Source);
+            var workerResultSets = await _workerExecutor.ExecuteAsync(plan, sources);
 
             // TODO ordering+limit could be more efficient using the result sets directly (it might also be required for performance)
-            var workerResults = workerResultSets.SelectMany(x => _resultsFetcher.Fetch(x));
+            var workerFetchedResultSets = await Task.WhenAll(workerResultSets.Select(x => _resultsFetcher.FetchAsync(x)));
+            var workerResults = workerFetchedResultSets.SelectMany(x => x);
 
             var orderedResults = ResultProcessor.Order(plan.Order, workerResults);
             var limitedResults = ResultProcessor.Limit(plan.Limit, orderedResults);
             var results = ProjectResults(limitedResults);
 
-            return _resultsStorer.Store(results);
+            return await _resultsStorer.StoreAsync(results);
         }
 
         private IReadOnlyList<ResultRow> ProjectResults(IEnumerable<ResultRow> results)

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using SelectParser.Queries;
 using SelectQuery.Distribution;
 using SelectQuery.Results;
@@ -15,31 +16,31 @@ namespace SelectQuery.Tests.Distribution
         private static readonly DataSource DefaultSource = new DataSource.Prefix(new Uri("http://localhost/data"));
 
         [Fact]
-        public void Distributor_ShouldPassSourceToResolver()
+        public async Task Distributor_ShouldPassSourceToResolver()
         {
             var resolver = new FakeSourceResolver(new Uri[0]) { ExpectedDataSource = DefaultSource };
             var distributor = CreateDistributor(sourceResolver: resolver);
 
-            distributor.Query(new DistributorInput(DefaultQuery, DefaultSource));
+            await distributor.QueryAsync(new DistributorInput(DefaultQuery, DefaultSource));
 
             // assertion is done by `resolver`
         }
 
         [Fact]
-        public void Distributor_ShouldPassSourcesToExecutor()
+        public async Task Distributor_ShouldPassSourcesToExecutor()
         {
-            var sources = new Uri[] { new Uri("http://localhost/data/1"), };
+            var sources = new[] { new Uri("http://localhost/data/1"), };
             var resolver = new FakeSourceResolver(sources);
             var executor = new FakeWorkerExecutor(new Result[0]) { ExpectedSources = sources };
             var distributor = CreateDistributor(sourceResolver: resolver, workerExecutor: executor);
 
-            distributor.Query(new DistributorInput(DefaultQuery, DefaultSource));
+            await distributor.QueryAsync(new DistributorInput(DefaultQuery, DefaultSource));
 
             // assertion is done by `executor`
         }
 
         [Fact]
-        public void Distributor_ShouldOrderResult()
+        public async Task Distributor_ShouldOrderResult()
         {
             var query = ParseQuery("SELECT id, name FROM table ORDER BY name");
             var expectedResults = new[]
@@ -56,13 +57,13 @@ namespace SelectQuery.Tests.Distribution
             var executor = new FakeWorkerExecutor(workerResults);
             var distributor = CreateDistributor(workerExecutor: executor);
 
-            var result = distributor.Query(new DistributorInput(query, DefaultSource));
+            var result = await distributor.QueryAsync(new DistributorInput(query, DefaultSource));
 
             AssertResultsEqual(expectedResults, result);
         }
 
         [Fact]
-        public void Distributor_ShouldLimitResult()
+        public async Task Distributor_ShouldLimitResult()
         {
             var query = ParseQuery("SELECT id, name FROM table ORDER BY name LIMIT 1");
             var results = new[]
@@ -80,14 +81,14 @@ namespace SelectQuery.Tests.Distribution
             var executor = new FakeWorkerExecutor(workerResults);
             var distributor = CreateDistributor(workerExecutor: executor);
 
-            var result = distributor.Query(new DistributorInput(query, DefaultSource));
+            var result = await distributor.QueryAsync(new DistributorInput(query, DefaultSource));
 
             AssertResultsEqual(expectedResults, result);
         }
 
 
         [Fact]
-        public void Distributor_ShouldFilterOutInternalColumns()
+        public async Task Distributor_ShouldFilterOutInternalColumns()
         {
             var workerResults = new[]
             {
@@ -103,12 +104,12 @@ namespace SelectQuery.Tests.Distribution
             var executor = new FakeWorkerExecutor(workerResults);
             var distributor = CreateDistributor(workerExecutor: executor);
 
-            var result = distributor.Query(new DistributorInput(DefaultQuery, DefaultSource));
+            var result = await distributor.QueryAsync(new DistributorInput(DefaultQuery, DefaultSource));
 
             AssertResultsEqual(expectedResults, result);
         }
 
-        private Distributor CreateDistributor(ISourceResolver sourceResolver = null, IWorkerExecutor workerExecutor = null, IResultsFetcher resultsesFetcher = null, IResultsStorer resultsStorer = null)
+        private static Distributor CreateDistributor(ISourceResolver sourceResolver = null, IWorkerExecutor workerExecutor = null, IResultsFetcher resultsesFetcher = null, IResultsStorer resultsStorer = null)
         {
             return new Distributor(
                 sourceResolver ?? new FakeSourceResolver(new Uri[0]),

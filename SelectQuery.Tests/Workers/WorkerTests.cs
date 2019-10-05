@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Threading.Tasks;
 using OneOf.Types;
 using SelectParser.Queries;
 using SelectQuery.Results;
@@ -16,7 +17,7 @@ namespace SelectQuery.Tests.Workers
         private static readonly Query Query = ParseQuery("SELECT * FROM table");
 
         [Fact]
-        public void BasicQuery_ShouldReturnUnderlyingResults()
+        public async Task BasicQuery_ShouldReturnUnderlyingResults()
         {
             var plan = new WorkerPlan(Query, new None(), new None());
             var underlyingResults = new[]
@@ -28,26 +29,26 @@ namespace SelectQuery.Tests.Workers
             var worker = new Worker(underlying, new FakeResultsStorer());
             var expectedResults = underlyingResults;
 
-            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
+            var results = await worker.QueryAsync(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
 
         [Fact]
-        public void Query_ShouldPassQueryAndDataLocationToUnderlyingExecutor()
+        public async Task Query_ShouldPassQueryAndDataLocationToUnderlyingExecutor()
         {
             var plan = new WorkerPlan(Query, new None(), new None());
             var dataLocation = new Uri("http://localhost/data");
             var underlying = new FakeUnderlyingExecutor(new ResultRow[0]) { ExpectedQuery = Query, ExpectedDataLocation = dataLocation };
             var worker = new Worker(underlying, new FakeResultsStorer());
 
-            worker.Query(new WorkerInput(plan, dataLocation));
+            await worker.QueryAsync(new WorkerInput(plan, dataLocation));
 
             // assert is done in `underlying`
         }
 
         [Fact]
-        public void OrderedQuery_ShouldOrderResults()
+        public async Task OrderedQuery_ShouldOrderResults()
         {
             var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Ascending)), new None());
             var underlyingResults = new[]
@@ -65,13 +66,13 @@ namespace SelectQuery.Tests.Workers
                 underlyingResults[2],
             };
 
-            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
+            var results = await worker.QueryAsync(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
 
         [Fact]
-        public void LimitedQuery_Limit_ShouldLimitResults()
+        public async Task LimitedQuery_Limit_ShouldLimitResults()
         {
             var plan = new WorkerPlan(Query, new None(), new LimitClause(1));
             var underlyingResults = new[] { CreateRow(("id", 1)), CreateRow(("id", 2)) };
@@ -79,12 +80,12 @@ namespace SelectQuery.Tests.Workers
             var worker = new Worker(underlying, new FakeResultsStorer());
             var expectedResults = new[] { underlyingResults[0] };
 
-            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
+            var results = await worker.QueryAsync(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
-        public void LimitedQuery_LimitAndOrder_ShouldLimitResultsAfterOrdering()
+        public async Task LimitedQuery_LimitAndOrder_ShouldLimitResultsAfterOrdering()
         {
             var plan = new WorkerPlan(Query, Order(("name", OrderDirection.Descending)), new LimitClause(1));
             var underlyingResults = new[]
@@ -96,7 +97,7 @@ namespace SelectQuery.Tests.Workers
             var worker = new Worker(underlying, new FakeResultsStorer());
             var expectedResults = new[] { underlyingResults[1] };
 
-            var results = worker.Query(new WorkerInput(plan, new Uri("http://localhost/data")));
+            var results = await worker.QueryAsync(new WorkerInput(plan, new Uri("http://localhost/data")));
 
             AssertResultsEqual(expectedResults, results);
         }

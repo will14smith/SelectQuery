@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using SelectQuery.Results;
 
 namespace SelectQuery.Lambda.Implementations
 {
     internal class S3ResultStorage : IResultsFetcher, IResultsStorer
     {
-        public IReadOnlyList<ResultRow> Fetch(Result result)
+        public Task<IReadOnlyList<ResultRow>> FetchAsync(Result result)
         {
             throw new NotImplementedException();
         }
 
-        public Result Store(IReadOnlyList<ResultRow> rows)
+        public Task<Result> StoreAsync(IReadOnlyList<ResultRow> rows)
         {
             throw new NotImplementedException();
         }

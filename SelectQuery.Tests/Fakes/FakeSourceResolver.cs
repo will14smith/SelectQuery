@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using OneOf.Types;
 using SelectParser;
 using SelectQuery.Distribution;
@@ -18,14 +19,14 @@ namespace SelectQuery.Tests.Fakes
             _sources = sources;
         }
 
-        public IReadOnlyList<Uri> Resolve(DataSource source)
+        public Task<IReadOnlyList<Uri>> ResolveAsync(DataSource source)
         {
             if (ExpectedDataSource.IsSome)
             {
                 Assert.Equal(ExpectedDataSource.AsT0, source);
             }
 
-            return _sources;
+            return Task.FromResult(_sources);
         }
     }
 }

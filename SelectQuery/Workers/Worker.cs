@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using SelectQuery.Results;
 
 namespace SelectQuery.Workers
@@ -14,17 +15,17 @@ namespace SelectQuery.Workers
             _resultsStorer = resultsStorer;
         }
 
-        public Result Query(WorkerInput input)
+        public async Task<Result> QueryAsync(WorkerInput input)
         {
             var plan = input.Plan;
 
-            var underlyingResults = _underlying.Execute(plan.UnderlyingQuery, input.DataLocation);
+            var underlyingResults = await _underlying.ExecuteAsync(plan.UnderlyingQuery, input.DataLocation);
             var orderedResults = ResultProcessor.Order(plan.Order, underlyingResults);
             var limitedResults = ResultProcessor.Limit(plan.Limit, orderedResults);
             // TODO do we need any worker side projection?
             var results = limitedResults.ToList();
 
-            return _resultsStorer.Store(results);
+            return await _resultsStorer.StoreAsync(results);
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -21,7 +22,7 @@ namespace SelectQuery.Tests.Fakes
             _results = results;
         }
 
-        public IReadOnlyList<ResultRow> Execute(Query query, Uri dataLocation)
+        public Task<IReadOnlyList<ResultRow>> ExecuteAsync(Query query, Uri dataLocation)
         {
             if (ExpectedQuery.IsSome)
             {
@@ -32,7 +33,7 @@ namespace SelectQuery.Tests.Fakes
                 Assert.Equal(ExpectedDataLocation.AsT0, dataLocation);
             }
 
-            return _results;
+            return Task.FromResult(_results);
         }
     }
 }

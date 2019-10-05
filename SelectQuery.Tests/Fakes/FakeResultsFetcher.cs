@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using SelectQuery.Results;
 
 namespace SelectQuery.Tests.Fakes
 {
     public class FakeResultsFetcher : IResultsFetcher
     {
-        public IReadOnlyList<ResultRow> Fetch(Result result)
+        public Task<IReadOnlyList<ResultRow>> FetchAsync(Result result)
         {
-            return result.Match(
+            return Task.FromResult(result.Match(
                 direct => direct.Rows,
                 _ => throw new InvalidOperationException()
-            );
+            ));
         }
     }
 }

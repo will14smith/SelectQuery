@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace SelectQuery.Distribution
 {
     public interface ISourceResolver
     {
-        IReadOnlyList<Uri> Resolve(DataSource source);
+        Task<IReadOnlyList<Uri>> ResolveAsync(DataSource source);
     }
 }

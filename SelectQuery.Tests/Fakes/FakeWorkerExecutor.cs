@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using OneOf.Types;
 using SelectParser;
 using SelectQuery.Distribution;
@@ -20,7 +21,7 @@ namespace SelectQuery.Tests.Fakes
             _results = results;
         }
 
-        public IReadOnlyCollection<Result> Execute(DistributorPlan plan, IReadOnlyList<Uri> sources)
+        public Task<IReadOnlyCollection<Result>> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
         {
             if (ExpectedPlan.IsSome)
             {
@@ -31,7 +32,7 @@ namespace SelectQuery.Tests.Fakes
                 Assert.Equal(ExpectedSources.AsT0, sources);
             }
 
-            return _results;
+            return Task.FromResult(_results);
         }
     }
 }

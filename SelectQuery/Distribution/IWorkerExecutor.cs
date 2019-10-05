@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using SelectQuery.Results;
 
 namespace SelectQuery.Distribution
 {
     public interface IWorkerExecutor
     {
-        IReadOnlyCollection<Result> Execute(DistributorPlan plan, IReadOnlyList<Uri> sources);
+        Task<IReadOnlyCollection<Result>> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources);
     }
 }
