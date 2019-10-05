@@ -6,7 +6,7 @@ namespace SelectQuery.Results
 {
     public abstract class Result : OneOfBase<Result.Direct, Result.InDirect>
     {
-        public class Direct
+        public class Direct : Result
         {
             public Direct(IReadOnlyList<ResultRow> rows)
             {
@@ -16,7 +16,7 @@ namespace SelectQuery.Results
             public IReadOnlyList<ResultRow> Rows { get; }
         }
 
-        public class InDirect
+        public class InDirect : Result
         {
             public InDirect(Uri location)
             {

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using SelectParser.Queries;
 using SelectQuery.Results;
 
@@ -6,6 +7,6 @@ namespace SelectQuery.Workers
 {
     public interface IUnderlyingExecutor
     {
-        IReadOnlyList<ResultRow> Execute(Query query);
+        IReadOnlyList<ResultRow> Execute(Query query, Uri dataLocation);
     }
 }

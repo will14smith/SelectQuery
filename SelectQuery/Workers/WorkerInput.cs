@@ -1,7 +1,7 @@
 ﻿using System;
 using SelectParser.Queries;
 
-namespace SelectQuery.Inputs
+namespace SelectQuery.Workers
 {
     public class WorkerInput
     {
