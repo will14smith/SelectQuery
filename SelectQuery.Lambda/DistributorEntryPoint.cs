@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Amazon.Lambda;
+using Amazon.Runtime;
 using SelectParser;
 using SelectParser.Queries;
 using SelectQuery.Distribution;
@@ -38,7 +40,10 @@ namespace SelectQuery.Lambda
 
         private static LambdaWorkerExecutor CreateExecutor()
         {
-            return new LambdaWorkerExecutor();
+            var lambda = new AmazonLambdaClient();
+            var functionName = Environment.GetEnvironmentVariable("WORKER_FUNCTION_NAME");
+
+            return new LambdaWorkerExecutor(lambda, functionName);
         }
         private static S3ResultStorage CreateStorage()
         {
