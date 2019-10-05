@@ -5,12 +5,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Execution\" />
-    <Folder Include="Parsing\" />
+    <PackageReference Include="OneOf" Version="2.1.150" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="OneOf" Version="2.1.150" />
+    <ProjectReference Include="..\SelectParser\SelectParser.csproj" />
   </ItemGroup>
 
 </Project>
