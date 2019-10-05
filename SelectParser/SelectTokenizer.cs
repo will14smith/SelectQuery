@@ -86,13 +86,13 @@ namespace SelectParser
 
             while (next.HasValue)
             {
-                if (char.IsLetter(next.Value))
+                if (char.IsLetter(next.Value) || next.Value == '_')
                 {
                     var start = next.Location;
                     do
                     {
                         next = next.Remainder.ConsumeChar();
-                    } while (next.HasValue && char.IsLetterOrDigit(next.Value));
+                    } while (next.HasValue && (char.IsLetterOrDigit(next.Value) || next.Value == '_'));
                     var end = next.Location;
 
                     var text = start.Until(end).ToStringValue();

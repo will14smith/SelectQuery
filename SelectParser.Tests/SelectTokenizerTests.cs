@@ -30,6 +30,8 @@ namespace SelectParser.Tests
         [Theory]
         [InlineData("test123", "test123")]
         [InlineData("TEST", "TEST")]
+        [InlineData("_", "_")]
+        [InlineData("_1", "_1")]
         [InlineData("\"Test\"", "\"Test\"")]
         [InlineData("\"SELECT\"", "\"SELECT\"")]
         public void TestIdentifiersAreParserCorrectly(string input, string expected)
