@@ -1,4 +1,5 @@
-﻿using OneOf.Types;
+﻿using System;
+using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
 
@@ -8,7 +9,35 @@ namespace SelectQuery.Workers
     {
         public Plan Plan(Query input)
         {
-            return new Plan(input, input, new None(), new None(), new None());
+            SelectClause underlyingSelect = null;
+            Option<LimitClause> underlyingLimit = new None();
+
+            Option<OrderClause> order = new None();
+            Option<SelectClause> select = new None();
+            Option<LimitClause> limit = new None();
+
+            if (input.Order.IsSome)
+            {
+                throw new NotImplementedException();
+            }
+
+            if (input.Limit.IsSome)
+            {
+                var limitValue = input.Limit.AsT0;
+                var offsetValue = limitValue.Offset.Match(x => x, _ => 0);
+
+                limit = limitValue;
+                underlyingLimit = new LimitClause(limitValue.Limit + offsetValue, new None());
+            }
+
+            if (underlyingSelect == null)
+            {
+                underlyingSelect = input.Select;
+            }
+
+            var underlying = new Query(underlyingSelect, input.From, input.Where, new None(), underlyingLimit);
+            
+            return new Plan(input, underlying, order, select, limit);
         }
     }
 
