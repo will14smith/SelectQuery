@@ -6,7 +6,7 @@ namespace SelectQuery.Distribution
 {
     public abstract class DataSource : OneOfBase<DataSource.List, DataSource.Prefix>
     {
-        public class List
+        public class List : DataSource
         {
             public List(IReadOnlyCollection<Uri> locations)
             {
@@ -16,7 +16,7 @@ namespace SelectQuery.Distribution
             public IReadOnlyCollection<Uri> Locations { get; }
         }
 
-        public class Prefix
+        public class Prefix : DataSource
         {
             public Prefix(Uri baseLocation)
             {

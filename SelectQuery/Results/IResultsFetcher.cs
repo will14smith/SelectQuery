@@ -2,7 +2,7 @@
 
 namespace SelectQuery.Results
 {
-    public interface IResultFetcher
+    public interface IResultsFetcher
     {
         IReadOnlyList<ResultRow> Fetch(Result result);
     }
