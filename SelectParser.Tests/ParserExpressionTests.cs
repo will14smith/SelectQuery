@@ -438,6 +438,30 @@ namespace SelectParser.Tests
             Assert.Equal("test", identifier.Name);
         }
         [Fact]
+        public void ParsingQualified()
+        {
+            var input = "a.b";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var qualified = Assert.IsType<Expression.Qualified>(expression);
+            Assert.Equal("a", qualified.Qualification);
+            AssertIdentifier("b", qualified.Expression);
+        }
+        [Fact]
+        public void ParsingQualifiedStar()
+        {
+            var input = "a.*";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var qualified = Assert.IsType<Expression.Qualified>(expression);
+            Assert.Equal("a", qualified.Qualification);
+            AssertIdentifier("*", qualified.Expression);
+        }
+        [Fact]
         public void ParsingNumberLiteral()
         {
             var input = "123";

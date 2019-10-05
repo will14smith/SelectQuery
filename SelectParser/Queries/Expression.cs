@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using OneOf;
 
@@ -95,6 +94,11 @@ namespace SelectParser.Queries
             public override int GetHashCode()
             {
                 return Name?.GetHashCode() ?? 0;
+            }
+
+            public override string ToString()
+            {
+                return Name;
             }
         }
         public class Qualified : Expression

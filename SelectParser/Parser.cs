@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using OneOf.Types;
 using SelectParser.Queries;
 using Superpower;
@@ -32,8 +33,27 @@ namespace SelectParser
 
         #region expression 
 
+        private static readonly TokenListParser<SelectToken, Expression> QualifiedIdentifier =
+            Identifier
+                .Or(Token.EqualTo(SelectToken.Star).Select(x => "*"))
+                .Select(x => new Expression.Identifier(x))
+                .AtLeastOnceDelimitedBy(Token.EqualTo(SelectToken.Dot))
+                .Select(BuildQualified);
+        private static Expression BuildQualified(Expression.Identifier[] identifiers)
+        {
+            if (identifiers.Length == 0) return null;
+            if (identifiers.Length == 1) return identifiers[0];
+
+            Expression result = identifiers[identifiers.Length - 1];
+            for (var i = identifiers.Length - 2; i >= 0; i--)
+            {
+                result = new Expression.Qualified(identifiers[i].Name, result);
+            }
+            return result;
+        }
+
         public static readonly TokenListParser<SelectToken, Expression> Term =
-            Identifier.Select(x => (Expression)new Expression.Identifier(x))
+            QualifiedIdentifier
                 .Or(Number.Select(x => (Expression)new Expression.NumberLiteral(x)))
                 .Or(String.Select(x => (Expression)new Expression.StringLiteral(x)))
                 .Or(Boolean.Select(x => (Expression)new Expression.BooleanLiteral(x)));

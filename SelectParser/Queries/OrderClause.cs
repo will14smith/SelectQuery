@@ -4,7 +4,7 @@ namespace SelectParser.Queries
 {
     public class OrderClause
     {
-        public OrderClause(IReadOnlyList<(Expression Express, OrderDirection Direction)> columns)
+        public OrderClause(IReadOnlyList<(Expression Expression, OrderDirection Direction)> columns)
         {
             Columns = columns;
         }
