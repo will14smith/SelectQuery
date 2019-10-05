@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Amazon.Lambda;
 using Amazon.Runtime;
+using Amazon.S3;
 using SelectParser;
 using SelectParser.Queries;
 using SelectQuery.Distribution;
@@ -35,7 +36,9 @@ namespace SelectQuery.Lambda
         
         private static S3SourceResolver CreateResolver()
         {
-            return new S3SourceResolver();
+            var s3 = new AmazonS3Client();
+
+            return new S3SourceResolver(s3);
         }
 
         private static LambdaWorkerExecutor CreateExecutor()

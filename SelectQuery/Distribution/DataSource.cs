@@ -8,12 +8,12 @@ namespace SelectQuery.Distribution
     {
         public class List : DataSource
         {
-            public List(IReadOnlyCollection<Uri> locations)
+            public List(IReadOnlyList<Uri> locations)
             {
                 Locations = locations;
             }
 
-            public IReadOnlyCollection<Uri> Locations { get; }
+            public IReadOnlyList<Uri> Locations { get; }
         }
 
         public class Prefix : DataSource
