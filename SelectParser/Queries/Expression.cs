@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using OneOf;
 
 namespace SelectParser.Queries
@@ -8,23 +10,92 @@ namespace SelectParser.Queries
         public class StringLiteral : Expression
         {
             public StringLiteral(string value) => Value = value;
-            public string Value { get; }
+            public new string Value { get; }
+
+            public bool Equals(StringLiteral other)
+            {
+                if (other is null) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return Value == other.Value;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is StringLiteral other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return (base.GetHashCode() * 397) ^ (Value?.GetHashCode() ?? 0);
+                }
+            }
         }
         public class NumberLiteral : Expression
         {
             public NumberLiteral(decimal value) => Value = value;
-            public decimal Value { get; }
+            public new decimal Value { get; }
+
+            public bool Equals(NumberLiteral other)
+            {
+                if (other is null) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return Value == other.Value;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is NumberLiteral other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return Value.GetHashCode();
+            }
         }
         public class BooleanLiteral : Expression
         {
             public BooleanLiteral(bool value) => Value = value;
-            public bool Value { get; }
+            public new bool Value { get; }
+
+            public bool Equals(BooleanLiteral other)
+            {
+                if (other is null) return false;
+                if (ReferenceEquals(this, other)) return true;
+                return Value == other.Value;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is BooleanLiteral other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return Value.GetHashCode();
+            }
         }
 
         public class Identifier : Expression
         {
             public Identifier(string name) => Name = name;
             public string Name { get; }
+
+            protected bool Equals(Identifier other)
+            {
+                return Name == other.Name;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is Identifier other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                return Name?.GetHashCode() ?? 0;
+            }
         }
         public class Qualified : Expression
         {
@@ -36,6 +107,24 @@ namespace SelectParser.Queries
 
             public string Qualification { get; }
             public Expression Expression { get; }
+
+            protected bool Equals(Qualified other)
+            {
+                return Qualification == other.Qualification && Equals(Expression, other.Expression);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is Qualified other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return ((Qualification?.GetHashCode() ?? 0) * 397) ^ (Expression?.GetHashCode() ?? 0);
+                }
+            }
         }
 
         public class Unary : Expression
@@ -48,6 +137,24 @@ namespace SelectParser.Queries
 
             public UnaryOperator Operator { get; }
             public Expression Expression { get; }
+
+            protected bool Equals(Unary other)
+            {
+                return Operator == other.Operator && Equals(Expression, other.Expression);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is Unary other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return ((int) Operator * 397) ^ (Expression?.GetHashCode() ?? 0);
+                }
+            }
         }
         public class Binary : Expression
         {
@@ -61,6 +168,24 @@ namespace SelectParser.Queries
             public BinaryOperator Operator { get; }
             public Expression Left { get; }
             public Expression Right { get; }
+
+            protected bool Equals(Binary other)
+            {
+                return Operator == other.Operator && Equals(Left, other.Left) && Equals(Right, other.Right);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is Binary other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    return ((((int) Operator * 397) ^ (Left?.GetHashCode() ?? 0)) * 397) ^ (Right?.GetHashCode() ?? 0);
+                }
+            }
         }
         public class Between : Expression
         {
@@ -76,6 +201,28 @@ namespace SelectParser.Queries
             public Expression Expression { get; }
             public Expression Lower { get; }
             public Expression Upper { get; }
+
+            protected bool Equals(Between other)
+            {
+                return Negate == other.Negate && Equals(Expression, other.Expression) && Equals(Lower, other.Lower) && Equals(Upper, other.Upper);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is Between other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hashCode = Negate.GetHashCode();
+                    hashCode = (hashCode * 397) ^ (Expression != null ? Expression.GetHashCode() : 0);
+                    hashCode = (hashCode * 397) ^ (Lower != null ? Lower.GetHashCode() : 0);
+                    hashCode = (hashCode * 397) ^ (Upper != null ? Upper.GetHashCode() : 0);
+                    return hashCode;
+                }
+            }
         }
         public class In : Expression
         {
@@ -87,6 +234,27 @@ namespace SelectParser.Queries
 
             public Expression Expression { get; }
             public IReadOnlyList<Expression> Matches { get; }
+
+            protected bool Equals(In other)
+            {
+                return base.Equals(other) && Equals(Expression, other.Expression) && Matches.SequenceEqual(other.Matches);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is In other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hashCode = base.GetHashCode();
+                    hashCode = (hashCode * 397) ^ (Expression?.GetHashCode() ?? 0);
+                    hashCode = (hashCode * 397) ^ (Matches?.GetHashCode() ?? 0);
+                    return hashCode;
+                }
+            }
         }
         public class Like : Expression
         {
@@ -100,6 +268,27 @@ namespace SelectParser.Queries
             public Expression Expression { get; }
             public Expression Pattern { get; }
             public Option<Expression> Escape { get; }
+
+            protected bool Equals(Like other)
+            {
+                return Equals(Expression, other.Expression) && Equals(Pattern, other.Pattern) && Equals(Escape, other.Escape);
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is Like other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hashCode = Expression?.GetHashCode() ?? 0;
+                    hashCode = (hashCode * 397) ^ (Pattern?.GetHashCode() ?? 0);
+                    hashCode = (hashCode * 397) ^ (Escape?.GetHashCode() ?? 0);
+                    return hashCode;
+                }
+            }
         }
     }
 }

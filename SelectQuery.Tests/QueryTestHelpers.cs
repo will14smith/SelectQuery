@@ -43,7 +43,7 @@ namespace SelectQuery.Tests
                         var expectedColumn = expectedList.Columns[i];
                         var actualColumn = actualList.Columns[i];
 
-                        AssertEqual(expectedColumn.Expression, actualColumn.Expression);
+                        Assert.Equal(expectedColumn.Expression, actualColumn.Expression);
                         Assert.Equal(expectedColumn.Alias, actualColumn.Alias);
                     }
                 }
@@ -66,7 +66,7 @@ namespace SelectQuery.Tests
         }
         public static void AssertEqual(WhereClause expected, WhereClause actual)
         {
-            AssertEqual(expected.Condition, actual.Condition);
+            Assert.Equal(expected.Condition, actual.Condition);
         }
 
         public static void AssertEqual(string expected, Option<OrderClause> actual)
@@ -94,7 +94,7 @@ namespace SelectQuery.Tests
                 var (expectedExpression, expectedDirection) = expected.Columns[i];
                 var (actualExpression, actualDirection) = actual.Columns[i];
 
-                AssertEqual(expectedExpression, actualExpression);
+                Assert.Equal(expectedExpression, actualExpression);
                 Assert.Equal(expectedDirection, actualDirection);
             }
         }
@@ -119,96 +119,6 @@ namespace SelectQuery.Tests
         {
             Assert.Equal(expected.Limit, actual.Limit);
             Assert.Equal(expected.Offset, actual.Offset);
-        }
-        #endregion
-
-        #region Expression Assertions
-        public static void AssertEqual(Expression expected, Expression actual)
-        {
-            expected.Switch(
-                expectedString =>
-                {
-                    Assert.True(actual.IsT0, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT0.Value, actual.AsT0.Value);
-                }, 
-                expectedNumber =>
-                {
-                    Assert.True(actual.IsT1, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT1.Value, actual.AsT1.Value);
-                }, 
-                expectedBoolean =>
-                {
-                    Assert.True(actual.IsT2, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT2.Value, actual.AsT2.Value);
-                },
-
-                expectedIdentifier =>
-                {
-                    Assert.True(actual.IsT3, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT3.Name, actual.AsT3.Name);
-                },
-                expectedQualified =>
-                {
-                    Assert.True(actual.IsT4, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT4.Qualification, actual.AsT4.Qualification);
-                    AssertEqual(expected.AsT4.Expression, actual.AsT4.Expression);
-                },
-
-                expectedUnary =>
-                {
-                    Assert.True(actual.IsT5, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT5.Operator, actual.AsT5.Operator);
-                    AssertEqual(expected.AsT5.Expression, actual.AsT5.Expression);
-                }, 
-                expectedBinary =>
-                {
-                    Assert.True(actual.IsT6, $"Expected '{expected}' but got '{actual}' instead");
-                    AssertEqual(expected.AsT6.Left, actual.AsT6.Left);
-                    Assert.Equal(expected.AsT6.Operator, actual.AsT6.Operator);
-                    AssertEqual(expected.AsT6.Right, actual.AsT6.Right);
-                },
-                expectedBetween =>
-                {
-                    Assert.True(actual.IsT7, $"Expected '{expected}' but got '{actual}' instead");
-                    Assert.Equal(expected.AsT7.Negate, actual.AsT7.Negate);
-                    AssertEqual(expected.AsT7.Expression, actual.AsT7.Expression);
-                    AssertEqual(expected.AsT7.Lower, actual.AsT7.Lower);
-                    AssertEqual(expected.AsT7.Upper, actual.AsT7.Upper);
-                },
-                expectedIn =>
-                {
-                    Assert.True(actual.IsT8, $"Expected '{expected}' but got '{actual}' instead");
-                    AssertEqual(expected.AsT8.Expression, actual.AsT8.Expression);
-
-                    Assert.Equal(expected.AsT8.Matches.Count, actual.AsT8.Matches.Count);
-
-                    for (var i = 0; i < expected.AsT8.Matches.Count; i++)
-                    {
-                        var expectedExpression = expected.AsT8.Matches[i];
-                        var actualExpression = actual.AsT8.Matches[i];
-
-                        AssertEqual(expectedExpression, actualExpression);
-                    }
-                },
-                expectedLike =>
-                {
-                    Assert.True(actual.IsT9, $"Expected '{expected}' but got '{actual}' instead");
-                    AssertEqual(expected.AsT9.Expression, actual.AsT9.Expression);
-                    AssertEqual(expected.AsT9.Pattern, actual.AsT9.Pattern);
-
-                    Assert.Equal(expected.AsT9.Escape.IsSome, actual.AsT9.Escape.IsSome);
-                    if (expected.AsT9.Escape.IsSome)
-                    {
-                        AssertEqual(expected.AsT9.Escape.AsT0, actual.AsT9.Escape.AsT0);
-                    }
-                }
-            );
-        }
-
-        public static void AssertIdentifierEqual(string expected, Expression expression)
-        {
-            var identifier = Assert.IsType<Expression.Identifier>(expression);
-            Assert.Equal(expected, identifier.Name);
         }
         #endregion
     }
