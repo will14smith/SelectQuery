@@ -16,6 +16,7 @@
         Order,
         By,
         Limit,
+        Offset,
         Asc,
         Desc,
         // operators

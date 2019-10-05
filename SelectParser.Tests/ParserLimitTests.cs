@@ -1,4 +1,5 @@
 ﻿using Xunit;
+using static SelectParser.Tests.ParserTestHelpers;
 
 namespace SelectParser.Tests
 {
@@ -9,19 +10,34 @@ namespace SelectParser.Tests
         {
             var input = "LIMIT 10";
 
-            var result = ParserTestHelpers.Parse(Parser.LimitClause, input);
+            var result = Parse(Parser.LimitClause, input);
 
-            var limit = ParserTestHelpers.AssertSuccess(result);
+            var limit = AssertSuccess(result);
             Assert.Equal(10, limit.Limit);
+            AssertNone(limit.Offset);
         }
+
+        [Fact]
+        public void ParsingOffset()
+        {
+            var input = "LIMIT 10 OFFSET 20";
+
+            var result = Parse(Parser.LimitClause, input);
+
+            var limit = AssertSuccess(result);
+            Assert.Equal(10, limit.Limit);
+            var offset = AssertSome(limit.Offset);
+            Assert.Equal(20, offset);
+        }
+
         [Fact]
         public void ParsingInvalidLimit()
         {
             var input = "LIMIT a";
 
-            var result = ParserTestHelpers.Parse(Parser.LimitClause, input);
+            var result = Parse(Parser.LimitClause, input);
 
-            ParserTestHelpers.AssertFailed(result);
+            AssertFailed(result);
         }
     }
 }
