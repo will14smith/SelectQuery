@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.IO;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
@@ -44,16 +45,19 @@ namespace SelectQuery.Lambda
         }
         private static S3ResultStorage CreateStorage()
         {
-            return new S3ResultStorage();
+            var s3 = new AmazonS3Client();
+            var resultBucket = Environment.GetEnvironmentVariable("RESULT_BUCKET_NAME");
+
+            return new S3ResultStorage(s3, resultBucket);
         }
 
-        public async Task<PublicResult> Handler(WorkerPublicInput input)
+        public async Task<Stream> Handler(WorkerPublicInput input)
         {
             var queryInput = ConvertInput(input);
 
             var result = await _worker.QueryAsync(queryInput);
 
-            return ConvertOutput(result);
+            return PublicResult.Serialize(result);
         }
 
         private static WorkerInput ConvertInput(WorkerPublicInput input)
@@ -70,15 +74,7 @@ namespace SelectQuery.Lambda
 
             return new WorkerInput(plan, input.DataLocation);
         }
-
-        private static PublicResult ConvertOutput(Result result)
-        {
-            return result.Match(
-                direct => new PublicResult { Rows = direct.Rows.Select(x => x.Fields).ToList() },
-                indirect => new PublicResult { Location = indirect.Location }
-            );
-        }
-
+        
         private static T Parse<T>(TokenListParser<SelectToken, T> parser, string input)
         {
             var tokenizer = new SelectTokenizer();

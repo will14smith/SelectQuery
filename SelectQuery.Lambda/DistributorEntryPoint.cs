@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Threading.Tasks;
 using Amazon.Lambda;
-using Amazon.Runtime;
 using Amazon.S3;
 using SelectParser;
 using SelectParser.Queries;
@@ -28,12 +27,12 @@ namespace SelectQuery.Lambda
 
             _distributor = new Distributor(resolver, executor, storage, storage);
         }
-        
+
         public DistributorEntryPoint(ISourceResolver resolver, IWorkerExecutor executor, IResultsFetcher resultsFetcher, IResultsStorer resultsStorer)
         {
             _distributor = new Distributor(resolver, executor, resultsFetcher, resultsStorer);
         }
-        
+
         private static S3SourceResolver CreateResolver()
         {
             var s3 = new AmazonS3Client();
@@ -50,34 +49,29 @@ namespace SelectQuery.Lambda
         }
         private static S3ResultStorage CreateStorage()
         {
-            return new S3ResultStorage();
+            var s3 = new AmazonS3Client();
+            var resultBucket = Environment.GetEnvironmentVariable("RESULT_BUCKET_NAME");
+
+            return new S3ResultStorage(s3, resultBucket);
         }
 
-        public async Task<PublicResult> Handler(DistributorPublicInput input)
+        public async Task<Stream> Handler(DistributorPublicInput input)
         {
             var queryInput = ConvertInput(input);
 
-            var result =await  _distributor.QueryAsync(queryInput);
+            var result = await _distributor.QueryAsync(queryInput);
 
-            return ConvertOutput(result);
+            return PublicResult.Serialize(result);
         }
 
         private static DistributorInput ConvertInput(DistributorPublicInput input)
         {
             var query = ParseQuery(input.Query);
-            var source = input.DataSource.Prefix == null 
-                ? (DataSource) new DataSource.List(input.DataSource.Locations ?? new List<Uri>()) 
+            var source = input.DataSource.Prefix == null
+                ? (DataSource)new DataSource.List(input.DataSource.Locations ?? new List<Uri>())
                 : new DataSource.Prefix(input.DataSource.Prefix);
 
             return new DistributorInput(query, source);
-        }
-
-        private static PublicResult ConvertOutput(Result result)
-        {
-            return result.Match(
-                direct => new PublicResult { Rows = direct.Rows.Select(x => x.Fields).ToList() },
-                indirect => new PublicResult { Location = indirect.Location }
-            );
         }
 
         private static Query ParseQuery(string input)

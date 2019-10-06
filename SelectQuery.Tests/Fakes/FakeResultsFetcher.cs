@@ -11,6 +11,7 @@ namespace SelectQuery.Tests.Fakes
         {
             return Task.FromResult(result.Match(
                 direct => direct.Rows,
+                _ => throw new InvalidOperationException(),
                 _ => throw new InvalidOperationException()
             ));
         }

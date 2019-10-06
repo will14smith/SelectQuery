@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Amazon.Lambda;
 using Amazon.Lambda.Model;
@@ -40,8 +38,6 @@ namespace SelectQuery.Lambda.Implementations
 
         private async Task<Result> ExecuteAsync(DistributorPlan plan, Uri source)
         {
-            var serializer = new JsonSerializer();
-
             var input = new WorkerPublicInput
             {
                 UnderlyingQuery = plan.UnderlyingQuery.ToString(),
@@ -63,14 +59,8 @@ namespace SelectQuery.Lambda.Implementations
                 throw new WorkerException(response.FunctionError);
             }
 
-            using var streamReader = new StreamReader(response.Payload);
-            using var reader = new JsonTextReader(streamReader);
-
-            var result = serializer.Deserialize<PublicResult>(reader);
-
-            return result.Location == null 
-                ? (Result)new Result.Direct(result.Rows?.Select(x => new ResultRow(x)).ToList() ?? new List<ResultRow>()) 
-                : new Result.InDirect(result.Location);
+            using var payload = response.Payload;
+            return await PublicResult.DeserializeAsync(payload);
         }
     }
 
