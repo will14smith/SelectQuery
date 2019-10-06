@@ -30,7 +30,7 @@ namespace SelectQuery.Lambda.Implementations
             if (prefixUri.Scheme != "s3") throw new ArgumentException("Prefix URI was not for S3");
 
             var bucketName = prefixUri.Host;
-            var prefix = prefixUri.AbsolutePath;
+            var prefix = prefixUri.AbsolutePath.TrimStart('/');
 
             var objects = new List<Uri>();
 

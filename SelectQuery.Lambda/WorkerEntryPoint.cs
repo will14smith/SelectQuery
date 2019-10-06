@@ -1,5 +1,7 @@
 ﻿using System.Linq;
 using System.Threading.Tasks;
+using Amazon.S3;
+using Amazon.S3.Model;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -31,7 +33,14 @@ namespace SelectQuery.Lambda
 
         private static S3SelectExecutor CreateExecutor()
         {
-            return new S3SelectExecutor();
+            var s3 = new AmazonS3Client();
+            var inputSerialization = new InputSerialization
+            {
+                JSON = new JSONInput { JsonType = JsonType.Lines },
+                CompressionType = CompressionType.Gzip
+            };
+
+            return new S3SelectExecutor(s3, inputSerialization);
         }
         private static S3ResultStorage CreateStorage()
         {
