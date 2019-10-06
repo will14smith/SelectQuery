@@ -15,5 +15,10 @@ namespace SelectParser.Queries
 
         public string Table { get; }
         public Option<string> Alias { get; }
+
+        public override string ToString()
+        {
+            return Alias.IsNone ? $"FROM {Table}" : $"FROM {Table} AS {Alias.AsT0}";
+        }
     }
 }

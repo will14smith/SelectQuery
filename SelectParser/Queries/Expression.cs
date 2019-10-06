@@ -4,8 +4,10 @@ using OneOf;
 
 namespace SelectParser.Queries
 {
-    public abstract class Expression : OneOfBase<Expression.StringLiteral,Expression.NumberLiteral,Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.In, Expression.Like>
+    public abstract class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.In, Expression.Like>
     {
+        public abstract override string ToString();
+
         public class StringLiteral : Expression
         {
             public StringLiteral(string value) => Value = value;
@@ -30,6 +32,12 @@ namespace SelectParser.Queries
                     return (base.GetHashCode() * 397) ^ (Value?.GetHashCode() ?? 0);
                 }
             }
+
+            public override string ToString()
+            {
+                // TODO handle escaping
+                return $"'{Value}'";
+            }
         }
         public class NumberLiteral : Expression
         {
@@ -52,6 +60,11 @@ namespace SelectParser.Queries
             {
                 return Value.GetHashCode();
             }
+
+            public override string ToString()
+            {
+                return $"{Value}";
+            }
         }
         public class BooleanLiteral : Expression
         {
@@ -73,6 +86,11 @@ namespace SelectParser.Queries
             public override int GetHashCode()
             {
                 return Value.GetHashCode();
+            }
+
+            public override string ToString()
+            {
+                return Value ? "true" : "false";
             }
         }
 
@@ -98,6 +116,7 @@ namespace SelectParser.Queries
 
             public override string ToString()
             {
+                // TODO handle quoting
                 return Name;
             }
         }
@@ -129,6 +148,11 @@ namespace SelectParser.Queries
                     return ((Qualification?.GetHashCode() ?? 0) * 397) ^ (Expression?.GetHashCode() ?? 0);
                 }
             }
+
+            public override string ToString()
+            {
+                return $"{Qualification}.{Expression}";
+            }
         }
 
         public class Unary : Expression
@@ -156,8 +180,20 @@ namespace SelectParser.Queries
             {
                 unchecked
                 {
-                    return ((int) Operator * 397) ^ (Expression?.GetHashCode() ?? 0);
+                    return ((int)Operator * 397) ^ (Expression?.GetHashCode() ?? 0);
                 }
+            }
+
+            public override string ToString()
+            {
+                var op = Operator switch
+                {
+                    UnaryOperator.Not => "!",
+                    UnaryOperator.Negate => "-"
+                };
+
+                // TODO precedence
+                return $"({op}{Expression})";
             }
         }
         public class Binary : Expression
@@ -187,8 +223,33 @@ namespace SelectParser.Queries
             {
                 unchecked
                 {
-                    return ((((int) Operator * 397) ^ (Left?.GetHashCode() ?? 0)) * 397) ^ (Right?.GetHashCode() ?? 0);
+                    return ((((int)Operator * 397) ^ (Left?.GetHashCode() ?? 0)) * 397) ^ (Right?.GetHashCode() ?? 0);
                 }
+            }
+
+            public override string ToString()
+            {
+                var op = Operator switch
+                {
+                    BinaryOperator.And => "AND",
+                    BinaryOperator.Or => "OR",
+
+                    BinaryOperator.Lesser => "<",
+                    BinaryOperator.Greater => ">",
+                    BinaryOperator.LesserOrEqual => "<=",
+                    BinaryOperator.GreaterOrEqual => ">=",
+                    BinaryOperator.Equal => "==",
+                    BinaryOperator.NotEqual => "<>",
+
+                    BinaryOperator.Add => "+",
+                    BinaryOperator.Subtract => "-",
+                    BinaryOperator.Multiply => "*",
+                    BinaryOperator.Divide => "/",
+                    BinaryOperator.Modulo => "%",
+                };
+
+                // TODO precedence
+                return $"({Left} {op} {Right})";
             }
         }
         public class Between : Expression
@@ -227,6 +288,12 @@ namespace SelectParser.Queries
                     return hashCode;
                 }
             }
+
+            public override string ToString()
+            {
+                // TODO bracketing?
+                return $"{Expression}{(Negate ? " NOT" : "")} BETWEEN {Lower} AND {Upper}";
+            }
         }
         public class In : Expression
         {
@@ -258,6 +325,11 @@ namespace SelectParser.Queries
                     hashCode = (hashCode * 397) ^ (Matches?.GetHashCode() ?? 0);
                     return hashCode;
                 }
+            }
+
+            public override string ToString()
+            {
+                return $"{Expression} IN ({string.Join(", ", Matches)})";
             }
         }
         public class Like : Expression
@@ -292,6 +364,11 @@ namespace SelectParser.Queries
                     hashCode = (hashCode * 397) ^ (Escape?.GetHashCode() ?? 0);
                     return hashCode;
                 }
+            }
+
+            public override string ToString()
+            {
+                return Escape.IsNone ? $"{Expression} LIKE {Pattern}" : $"{Expression} LIKE {Pattern} ESCAPE {Escape.AsT0}";
             }
         }
     }

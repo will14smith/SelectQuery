@@ -13,5 +13,10 @@ namespace SelectParser.Queries
 
         public int Limit { get; }
         public Option<int> Offset { get; }
+
+        public override string ToString()
+        {
+            return Offset.IsNone ? $"LIMIT {Limit}" : $"LIMIT {Limit} OFFSET {Offset.AsT0}";
+        }
     }
 }

@@ -15,5 +15,10 @@ namespace SelectParser.Queries
 
         public Expression Expression { get; }
         public Option<string> Alias { get; }
+
+        public override string ToString()
+        {
+            return Alias.IsSome ? $"{Expression} AS {Alias.AsT0}" : $"{Expression}";
+        }
     }
 }

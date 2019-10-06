@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace SelectParser.Queries
 {
@@ -10,5 +11,11 @@ namespace SelectParser.Queries
         }
 
         public IReadOnlyList<(Expression Expression, OrderDirection Direction)> Columns { get; }
+
+        public override string ToString()
+        {
+            var columns = Columns.Select(x => $"{x.Expression}{(x.Direction == OrderDirection.Descending ? " DESC" : "")}");
+            return $"ORDER BY {string.Join(", ", columns)}";
+        }
     }
 }
