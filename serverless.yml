@@ -20,17 +20,23 @@ provider:
     RESULT_BUCKET_NAME:
       Ref: ResultsBucket
 
+  tracing:
+    lambda: true
+
   iamRoleStatements:
     - Effect: Allow
       Action:
         - s3:GetObject
         - s3:PutObject
       Resource:
-        Fn::GetAtt: [ResultsBucket, Arn]
+        - Fn::Join:
+            - "/"
+            - - Fn::GetAtt: [ResultsBucket, Arn]
+              - "*"
     - Effect: Allow
       Action:
         - s3:GetObject
-      Resource: arn:aws:s3:::${self:custom.dataBucket}
+      Resource: arn:aws:s3:::${self:custom.dataBucket}/*
     - Effect: Allow
       Action:
         - lambda:InvokeFunction
@@ -43,8 +49,8 @@ provider:
             - function
             - ${self:service.name}-${self:provider.stage}-worker
 
-  memorySize: 512
-  timeout: 15
+  memorySize: ${self:custom.memorySize}
+  timeout: ${self:custom.timeout}
 
 package:
   artifact: artifacts/lambda.zip

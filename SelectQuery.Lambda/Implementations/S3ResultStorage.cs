@@ -11,7 +11,7 @@ using SelectQuery.Results;
 
 namespace SelectQuery.Lambda.Implementations
 {
-    internal class S3ResultStorage : IResultsFetcher, IResultsStorer
+    public class S3ResultStorage : IResultsFetcher, IResultsStorer
     {
         private const int KB = 1024;
         private const int MB = 1024 * KB;
@@ -81,7 +81,7 @@ namespace SelectQuery.Lambda.Implementations
         public async Task<Result> StoreAsync(IReadOnlyList<ResultRow> rows)
         {
             using var ms = new MemoryStream();
-            using (var gzip = new GZipStream(ms, CompressionMode.Compress))
+            using (var gzip = new GZipStream(ms, CompressionMode.Compress, true))
             {
                 using var writer = new StreamWriter(gzip, Encoding.UTF8);
                 foreach (var row in rows)

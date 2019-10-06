@@ -12,7 +12,7 @@ using SelectQuery.Workers;
 
 namespace SelectQuery.Lambda.Implementations
 {
-    internal class S3SelectExecutor : IUnderlyingExecutor
+    public class S3SelectExecutor : IUnderlyingExecutor
     {
         private readonly IAmazonS3 _s3;
         private readonly InputSerialization _inputSerialization;

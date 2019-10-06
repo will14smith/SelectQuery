@@ -8,7 +8,7 @@ using SelectQuery.Distribution;
 
 namespace SelectQuery.Lambda.Implementations
 {
-    internal class S3SourceResolver : ISourceResolver
+    public class S3SourceResolver : ISourceResolver
     {
         private readonly IAmazonS3 _s3;
 

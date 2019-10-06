@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
+using Amazon.XRay.Recorder.Handlers.AwsSdk;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -18,6 +19,11 @@ namespace SelectQuery.Lambda
     public class WorkerEntryPoint
     {
         private readonly Worker _worker;
+
+        static WorkerEntryPoint()
+        {
+            AWSSDKHandler.RegisterXRayForAllServices();
+        }
 
         public WorkerEntryPoint()
         {

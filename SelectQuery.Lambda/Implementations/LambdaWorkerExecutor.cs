@@ -11,7 +11,7 @@ using SelectQuery.Results;
 
 namespace SelectQuery.Lambda.Implementations
 {
-    internal class LambdaWorkerExecutor : IWorkerExecutor
+    public class LambdaWorkerExecutor : IWorkerExecutor
     {
         private readonly IAmazonLambda _lambda;
         private readonly string _workerFunctionName;

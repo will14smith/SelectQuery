@@ -4,6 +4,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Amazon.Lambda;
 using Amazon.S3;
+using Amazon.XRay.Recorder.Handlers.AwsSdk;
 using SelectParser;
 using SelectParser.Queries;
 using SelectQuery.Distribution;
@@ -18,6 +19,11 @@ namespace SelectQuery.Lambda
     public class DistributorEntryPoint
     {
         private readonly Distributor _distributor;
+
+        static DistributorEntryPoint()
+        {
+            AWSSDKHandler.RegisterXRayForAllServices();
+        }
 
         public DistributorEntryPoint()
         {
