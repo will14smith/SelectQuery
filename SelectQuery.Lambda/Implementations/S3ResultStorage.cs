@@ -1,12 +1,14 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Text;
+using System.IO.Pipelines;
+using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Newtonsoft.Json;
 using SelectQuery.Results;
 
 namespace SelectQuery.Lambda.Implementations
@@ -26,42 +28,86 @@ namespace SelectQuery.Lambda.Implementations
             _resultsBucket = resultsBucket;
         }
 
-        public Task<IReadOnlyList<ResultRow>> FetchAsync(Result result)
+        public IAsyncEnumerable<ResultRow> FetchAsync(Result result)
         {
             return result.Match(
-                direct => Task.FromResult(direct.Rows),
-                serialized => Task.FromResult(Deserialize(serialized.Data)),
+                direct => direct.Rows.ToAsyncEnumerable(),
+                serialized => Deserialize(serialized.Data),
                 indirect => FetchAsync(indirect.Location)
             );
         }
 
-        private static IReadOnlyList<ResultRow> Deserialize(byte[] serializedData)
+        private static IAsyncEnumerable<ResultRow> Deserialize(byte[] serializedData)
         {
             using var stream = new MemoryStream(serializedData);
 
             return Deserialize(stream);
         }
-        private static IReadOnlyList<ResultRow> Deserialize(Stream data)
+        private static IAsyncEnumerable<ResultRow> Deserialize(Stream data)
         {
-            using var gzip = new GZipStream(data, CompressionMode.Decompress);
-            using var reader = new StreamReader(gzip, Encoding.UTF8);
+            var pipe = new Pipe();
 
-            var results = new List<ResultRow>();
-
-            while (true)
+            Task.Run(async () =>
             {
-                var line = reader.ReadLine();
-                if (string.IsNullOrEmpty(line)) break;
+                var writer = pipe.Writer;
 
-                var fields = JsonConvert.DeserializeObject<Dictionary<string, object>>(line);
+                using var gzip = new GZipStream(data, CompressionMode.Decompress);
 
-                results.Add(new ResultRow(fields));
-            }
+                while (true)
+                {
+                    var buffer = writer.GetMemory(4096);
 
-            return results;
+                    var bytes = await gzip.ReadAsync(buffer);
+                    if (bytes == 0) break;
+
+                    writer.Advance(bytes);
+
+                    var flush = await writer.FlushAsync();
+                    if (flush.IsCompleted) break;
+                }
+
+                await writer.CompleteAsync();
+            }).ConfigureAwait(false);
+            
+            return Reader(pipe.Reader);
         }
 
-        private async Task<IReadOnlyList<ResultRow>> FetchAsync(Uri indirectLocation)
+        private static async IAsyncEnumerable<ResultRow> Reader(PipeReader reader)
+        {
+            while (true)
+            {
+                var result = await reader.ReadAsync();
+
+                var buffer = result.Buffer;
+                SequencePosition? position;
+
+                do
+                {
+                    position = buffer.PositionOf((byte)'\n');
+                    if (position == null) continue;
+
+                    yield return DeserializeRow(buffer.Slice(0, position.Value));
+
+                    buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
+
+                } while (position != null);
+
+                reader.AdvanceTo(buffer.Start, buffer.End);
+
+                if (result.IsCompleted) break;
+            }
+
+            await reader.CompleteAsync();
+        }
+
+        private static ResultRow DeserializeRow(ReadOnlySequence<byte> line)
+        {
+            var reader = new Utf8JsonReader(line);
+            var fields = JsonSerializer.Deserialize<Dictionary<string, object>>(ref reader);
+            return new ResultRow(fields);
+        }
+
+        private async IAsyncEnumerable<ResultRow> FetchAsync(Uri indirectLocation)
         {
             if (indirectLocation.Scheme != "s3") throw new ArgumentException("IndirectLocation is not S3", nameof(indirectLocation));
 
@@ -74,19 +120,22 @@ namespace SelectQuery.Lambda.Implementations
                 Key = objectKey
             });
             using var responseStream = response.ResponseStream;
-            
-            return Deserialize(responseStream);
+
+            await foreach (var row in Deserialize(responseStream))
+            {
+                yield return row;
+            }
         }
 
-        public async Task<Result> StoreAsync(IReadOnlyList<ResultRow> rows)
+        public async Task<Result> StoreAsync(IAsyncEnumerable<ResultRow> rows)
         {
             using var ms = new MemoryStream();
             using (var gzip = new GZipStream(ms, CompressionMode.Compress, true))
             {
-                using var writer = new StreamWriter(gzip, Encoding.UTF8);
-                foreach (var row in rows)
+                await foreach (var row in rows)
                 {
-                    writer.WriteLine(JsonConvert.SerializeObject(row.Fields));
+                    gzip.Write(JsonSerializer.SerializeToUtf8Bytes(row.Fields));
+                    gzip.WriteByte((byte)'\n');
                 }
             }
 

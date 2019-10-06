@@ -5,6 +5,6 @@ namespace SelectQuery.Results
 {
     public interface IResultsStorer
     {
-        Task<Result> StoreAsync(IReadOnlyList<ResultRow> rows);
+        Task<Result> StoreAsync(IAsyncEnumerable<ResultRow> rows);
     }
 }

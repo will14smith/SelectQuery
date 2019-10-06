@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Threading.Tasks;
 using SelectParser.Queries;
 using Xunit;
 using static SelectQuery.Tests.ResultTestHelpers;
@@ -9,7 +10,7 @@ namespace SelectQuery.Tests
     {
         #region order
         [Fact]
-        public void OrderedQuery_ShouldOrderResults()
+        public async Task OrderedQuery_ShouldOrderResults()
         {
             var order = Order(("name", OrderDirection.Ascending));
             var input = new[]
@@ -20,12 +21,12 @@ namespace SelectQuery.Tests
             };
             var expectedResults = new[] { input[1], input[0], input[2] };
 
-            var results = ResultProcessor.Order(order, input);
+            var results = await ResultProcessor.Order(order, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
-        public void OrderedQuery_Multiple_ShouldOrderResults()
+        public async Task OrderedQuery_Multiple_ShouldOrderResults()
         {
             var order = Order(("name", OrderDirection.Ascending), ("other", OrderDirection.Ascending));
             var input = new[]
@@ -36,12 +37,12 @@ namespace SelectQuery.Tests
             };
             var expectedResults = new[] { input[1], input[0], input[2] };
 
-            var results = ResultProcessor.Order(order, input);
+            var results = await ResultProcessor.Order(order, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
-        public void OrderedQuery_Desc_ShouldOrderResults()
+        public async Task OrderedQuery_Desc_ShouldOrderResults()
         {
             var order = Order(("name", OrderDirection.Descending));
             var input = new[]
@@ -52,12 +53,12 @@ namespace SelectQuery.Tests
             };
             var expectedResults = new[] { input[2], input[0], input[1] };
 
-            var results = ResultProcessor.Order(order, input);
+            var results = await ResultProcessor.Order(order, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
-        public void OrderedQuery_Missing_ShouldOrderResults()
+        public async Task OrderedQuery_Missing_ShouldOrderResults()
         {
             var order = Order(("name", OrderDirection.Ascending));
             var input = new[]
@@ -68,7 +69,7 @@ namespace SelectQuery.Tests
             };
             var expectedResults = new[] { input[0], input[1], input[2] };
 
-            var results = ResultProcessor.Order(order, input);
+            var results = await ResultProcessor.Order(order, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }
@@ -81,32 +82,35 @@ namespace SelectQuery.Tests
 
         #region limit
         [Fact]
-        public void Limit_ShouldLimitResults()
+        public async Task Limit_ShouldLimitResults()
         {
+            var limit = new LimitClause(1);
             var input = new[] { CreateRow(("id", 1)), CreateRow(("id", 2)) };
             var expectedResults = new[] { input[0] };
 
-            var results = ResultProcessor.Limit(new LimitClause(1), input);
+            var results = await ResultProcessor.Limit(limit, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
-        public void LimitHigherThanCount_ShouldLimitResults()
+        public async Task LimitHigherThanCount_ShouldLimitResults()
         {
+            var limit = new LimitClause(10);
             var input = new[] { CreateRow(("id", 1)) };
             var expectedResults = new[] { input[0] };
 
-            var results = ResultProcessor.Limit(new LimitClause(10), input);
+            var results = await ResultProcessor.Limit(limit, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }
         [Fact]
-        public void LimitOffset_ShouldLimitResults()
+        public async Task LimitOffset_ShouldLimitResults()
         {
+            var limit = new LimitClause(1, 1);
             var input = new[] { CreateRow(("id", 1)), CreateRow(("id", 2)), CreateRow(("id", 3)) };
             var expectedResults = new[] { input[1] };
 
-            var results = ResultProcessor.Limit(new LimitClause(1, 1), input);
+            var results = await ResultProcessor.Limit(limit, input.ToAsyncEnumerable()).ToListAsync();
 
             AssertResultsEqual(expectedResults, results);
         }

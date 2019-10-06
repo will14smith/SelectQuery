@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.IO;
-using System.Text;
+using System.IO.Pipelines;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
-using Newtonsoft.Json;
 using SelectParser.Queries;
 using SelectQuery.Results;
 using SelectQuery.Workers;
@@ -23,7 +23,7 @@ namespace SelectQuery.Lambda.Implementations
             _inputSerialization = inputSerialization;
         }
 
-        public async Task<IReadOnlyList<ResultRow>> ExecuteAsync(Query query, Uri dataLocation)
+        public async IAsyncEnumerable<ResultRow> ExecuteAsync(Query query, Uri dataLocation)
         {
             if (dataLocation.Scheme != "s3") throw new ArgumentException("DataLocation is not S3", nameof(dataLocation));
 
@@ -31,9 +31,12 @@ namespace SelectQuery.Lambda.Implementations
             var objectKey = dataLocation.AbsolutePath.TrimStart('/');
 
             using var response = await SelectAsync(query, bucketName, objectKey);
-            return ReadResponse(response);
+            await foreach (var row in ReadResponse(response))
+            {
+                yield return row;
+            }
         }
-        
+
         private async Task<ISelectObjectContentEventStream> SelectAsync(Query query, string bucketName, string objectKey)
         {
             var request = new SelectObjectContentRequest
@@ -45,60 +48,79 @@ namespace SelectQuery.Lambda.Implementations
                 ExpressionType = ExpressionType.SQL,
 
                 InputSerialization = _inputSerialization,
-                OutputSerialization = new OutputSerialization {JSON = new JSONOutput()},
+                OutputSerialization = new OutputSerialization { JSON = new JSONOutput() },
             };
             var response = await _s3.SelectObjectContentAsync(request);
 
             return response.Payload;
         }
 
-        private static IReadOnlyList<ResultRow> ReadResponse(ISelectObjectContentEventStream eventStream)
+        private static IAsyncEnumerable<ResultRow> ReadResponse(ISelectObjectContentEventStream eventStream)
         {
-            var results = new List<ResultRow>();
+            var pipe = new Pipe();
 
-            var buffer = ReadOnlySpan<char>.Empty;
-
-            foreach (var ev in eventStream)
+            Task.Run(async () =>
             {
-                if (!(ev is RecordsEvent records)) continue;
+                var writer = pipe.Writer;
 
-                using var reader = new StreamReader(records.Payload, Encoding.UTF8);
-                buffer = CombineBuffers(buffer, reader.ReadToEnd());
+                foreach (var ev in eventStream)
+                {
+                    if (!(ev is RecordsEvent records)) continue;
 
-                ParsePartialBuffer(ref buffer, results);
-            }
+                    while (true)
+                    {
+                        var buffer = writer.GetMemory(4096);
 
-            if (!buffer.IsEmpty)
-            {
-                throw new InvalidOperationException("Buffer was not empty after all data was received");
-            }
+                        var bytesRead = await records.Payload.ReadAsync(buffer);
+                        if (bytesRead == 0) break;
 
-            return results;
+                        writer.Advance(bytesRead);
+
+                        var flush = await writer.FlushAsync();
+                        if (flush.IsCompleted) break;
+                    }
+                }
+
+                await writer.CompleteAsync();
+            });
+
+            return Reader(pipe.Reader);
         }
 
-        private static ReadOnlySpan<char> CombineBuffers(ReadOnlySpan<char> buffer, string newBuffer)
-        {
-            return buffer.IsEmpty 
-                ? newBuffer.AsSpan() 
-                : (buffer.ToString() + newBuffer).AsSpan();
-        }
-
-        private static void ParsePartialBuffer(ref ReadOnlySpan<char> buffer, ICollection<ResultRow> results)
+        public static async IAsyncEnumerable<ResultRow> Reader(PipeReader reader)
         {
             while (true)
             {
-                var nextOffset = buffer.IndexOf('\n');
-                if (nextOffset == -1)
+                var result = await reader.ReadAsync();
+
+                var buffer = result.Buffer;
+                SequencePosition? position;
+
+                do
                 {
-                    break;
-                }
+                    position = buffer.PositionOf((byte)'\n');
+                    if (position == null) continue;
 
-                var recordBuffer = new string(buffer.Slice(0, nextOffset));
-                var record = JsonConvert.DeserializeObject<Dictionary<string, object>>(recordBuffer);
-                results.Add(new ResultRow(record));
+                    var row = DeserializeRow(buffer.Slice(0, position.Value));
+                    yield return row;
 
-                buffer = buffer.Slice(nextOffset + 1);
+                    buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
+
+                } while (position != null);
+
+                reader.AdvanceTo(buffer.Start, buffer.End);
+
+                if (result.IsCompleted) break;
             }
+
+            await reader.CompleteAsync();
+        }
+
+        private static ResultRow DeserializeRow(ReadOnlySequence<byte> line)
+        {
+            var reader = new Utf8JsonReader(line);
+            var fields = JsonSerializer.Deserialize<Dictionary<string, object>>(ref reader);
+            return new ResultRow(fields);
         }
     }
 }

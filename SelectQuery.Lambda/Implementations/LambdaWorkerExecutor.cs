@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using Amazon.Lambda;
 using Amazon.Lambda.Model;
@@ -22,18 +24,9 @@ namespace SelectQuery.Lambda.Implementations
             _workerFunctionName = workerFunctionName;
         }
 
-        public async Task<IReadOnlyCollection<Result>> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
+        public IAsyncEnumerable<Result> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
         {
-            var tasks = new Task<Result>[sources.Count];
-
-            for (var i = 0; i < sources.Count; i++)
-            {
-                var source = sources[i];
-
-                tasks[i] = ExecuteAsync(plan, source);
-            }
-
-            return await Task.WhenAll(tasks);
+            return sources.ToObservable().SelectMany(source => ExecuteAsync(plan, source)).ToAsyncEnumerable();
         }
 
         private async Task<Result> ExecuteAsync(DistributorPlan plan, Uri source)

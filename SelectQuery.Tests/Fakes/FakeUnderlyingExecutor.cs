@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -22,7 +22,7 @@ namespace SelectQuery.Tests.Fakes
             _results = results;
         }
 
-        public Task<IReadOnlyList<ResultRow>> ExecuteAsync(Query query, Uri dataLocation)
+        public IAsyncEnumerable<ResultRow> ExecuteAsync(Query query, Uri dataLocation)
         {
             if (ExpectedQuery.IsSome)
             {
@@ -33,7 +33,7 @@ namespace SelectQuery.Tests.Fakes
                 Assert.Equal(ExpectedDataLocation.AsT0, dataLocation);
             }
 
-            return Task.FromResult(_results);
+            return _results.ToAsyncEnumerable();
         }
     }
 }

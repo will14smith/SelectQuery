@@ -9,7 +9,7 @@ namespace SelectQuery
 {
     internal class ResultProcessor
     {
-        public static IEnumerable<ResultRow> Order(Option<OrderClause> orderOpt, IEnumerable<ResultRow> results)
+        public static IAsyncEnumerable<ResultRow> Order(Option<OrderClause> orderOpt, IAsyncEnumerable<ResultRow> results)
         {
             if (orderOpt.IsNone || orderOpt.AsT0.Columns.Count == 0) return results;
             var columns = orderOpt.AsT0.Columns;
@@ -41,7 +41,7 @@ namespace SelectQuery
             }
         }
 
-        public static IEnumerable<ResultRow> Limit(Option<LimitClause> limitOpt, IEnumerable<ResultRow> results)
+        public static IAsyncEnumerable<ResultRow> Limit(Option<LimitClause> limitOpt, IAsyncEnumerable<ResultRow> results)
         {
             if (limitOpt.IsNone) return results;
             var limit = limitOpt.AsT0;

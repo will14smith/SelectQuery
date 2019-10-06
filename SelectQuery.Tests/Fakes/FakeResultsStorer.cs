@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using SelectQuery.Results;
 
@@ -6,9 +7,9 @@ namespace SelectQuery.Tests.Fakes
 {
     public class FakeResultsStorer : IResultsStorer
     {
-        public Task<Result> StoreAsync(IReadOnlyList<ResultRow> rows)
+        public async Task<Result> StoreAsync(IAsyncEnumerable<ResultRow> rows)
         {
-            return Task.FromResult<Result>(new Result.Direct(rows));
+            return new Result.Direct(await rows.ToListAsync());
         }
     }
 }
