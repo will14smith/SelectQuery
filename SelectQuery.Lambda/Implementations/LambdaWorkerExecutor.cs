@@ -45,7 +45,7 @@ namespace SelectQuery.Lambda.Implementations
                 FunctionName = _workerFunctionName,
                 InvocationType = InvocationType.RequestResponse,
                 Payload = JsonConvert.SerializeObject(input),
-            });
+            }).ConfigureAwait(false);
 
             if (!string.IsNullOrEmpty(response.FunctionError))
             {
@@ -53,7 +53,7 @@ namespace SelectQuery.Lambda.Implementations
             }
 
             using var payload = response.Payload;
-            return await PublicResult.DeserializeAsync(payload);
+            return await PublicResult.DeserializeAsync(payload).ConfigureAwait(false);
         }
     }
 

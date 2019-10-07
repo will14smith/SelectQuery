@@ -2,7 +2,6 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
-using System.IO.Compression;
 using System.IO.Pipelines;
 using System.Linq;
 using System.Text.Json;
@@ -51,13 +50,11 @@ namespace SelectQuery.Lambda.Implementations
             {
                 var writer = pipe.Writer;
 
-                using var gzip = new GZipStream(data, CompressionMode.Decompress);
-
                 while (true)
                 {
                     var buffer = writer.GetMemory(4096);
 
-                    var bytes = await gzip.ReadAsync(buffer).ConfigureAwait(false);
+                    var bytes = await data.ReadAsync(buffer).ConfigureAwait(false);
                     if (bytes == 0) break;
 
                     writer.Advance(bytes);
@@ -68,7 +65,7 @@ namespace SelectQuery.Lambda.Implementations
 
                 await writer.CompleteAsync().ConfigureAwait(false);
             }).ConfigureAwait(false);
-            
+
             return Reader(pipe.Reader);
         }
 
@@ -77,7 +74,7 @@ namespace SelectQuery.Lambda.Implementations
             while (true)
             {
                 var result = await reader.ReadAsync().ConfigureAwait(false);
-                
+
                 var buffer = result.Buffer;
                 SequencePosition? position;
 
@@ -130,13 +127,11 @@ namespace SelectQuery.Lambda.Implementations
         public async Task<Result> StoreAsync(IAsyncEnumerable<ResultRow> rows)
         {
             using var ms = new MemoryStream();
-            using (var gzip = new GZipStream(ms, CompressionMode.Compress, true))
+
+            await foreach (var row in rows)
             {
-                await foreach (var row in rows)
-                {
-                    gzip.Write(JsonSerializer.SerializeToUtf8Bytes(row.Fields));
-                    gzip.WriteByte((byte)'\n');
-                }
+                await JsonSerializer.SerializeAsync(ms, row).ConfigureAwait(false);
+                ms.WriteByte((byte)'\n');
             }
 
             if (ms.Length < LambdaPayloadThreshold)

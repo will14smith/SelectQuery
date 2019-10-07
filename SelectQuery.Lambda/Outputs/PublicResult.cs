@@ -53,7 +53,7 @@ namespace SelectQuery.Lambda.Outputs
                 case 2:
                     {
                         using var ms = new MemoryStream();
-                        await stream.CopyToAsync(ms);
+                        await stream.CopyToAsync(ms).ConfigureAwait(false);
                         return new Result.Serialized(ms.ToArray());
                     }
                 case 3:
