@@ -61,7 +61,7 @@ namespace SelectQuery.Lambda
         {
             var queryInput = ConvertInput(input);
 
-            var result = await _worker.QueryAsync(queryInput);
+            var result = await _worker.QueryAsync(queryInput).ConfigureAwait(false);
 
             return PublicResult.Serialize(result);
         }

@@ -24,7 +24,7 @@ namespace SelectQuery.Workers
             // TODO do we need any worker side projection?
             var results = limitedResults;
 
-            return await _resultsStorer.StoreAsync(results);
+            return await _resultsStorer.StoreAsync(results).ConfigureAwait(false);
         }
     }
 }

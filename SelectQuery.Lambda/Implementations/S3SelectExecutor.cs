@@ -30,7 +30,7 @@ namespace SelectQuery.Lambda.Implementations
             var bucketName = dataLocation.Host;
             var objectKey = dataLocation.AbsolutePath.TrimStart('/');
 
-            using var response = await SelectAsync(query, bucketName, objectKey);
+            using var response = await SelectAsync(query, bucketName, objectKey).ConfigureAwait(false);
             await foreach (var row in ReadResponse(response))
             {
                 yield return row;
@@ -50,7 +50,7 @@ namespace SelectQuery.Lambda.Implementations
                 InputSerialization = _inputSerialization,
                 OutputSerialization = new OutputSerialization { JSON = new JSONOutput() },
             };
-            var response = await _s3.SelectObjectContentAsync(request);
+            var response =  await _s3.SelectObjectContentAsync(request).ConfigureAwait(false);
 
             return response.Payload;
         }
@@ -71,17 +71,17 @@ namespace SelectQuery.Lambda.Implementations
                     {
                         var buffer = writer.GetMemory(4096);
 
-                        var bytesRead = await records.Payload.ReadAsync(buffer);
+                        var bytesRead = await records.Payload.ReadAsync(buffer).ConfigureAwait(false);
                         if (bytesRead == 0) break;
 
                         writer.Advance(bytesRead);
 
-                        var flush = await writer.FlushAsync();
+                        var flush = await writer.FlushAsync().ConfigureAwait(false);
                         if (flush.IsCompleted) break;
                     }
                 }
 
-                await writer.CompleteAsync();
+                await writer.CompleteAsync().ConfigureAwait(false);
             });
 
             return Reader(pipe.Reader);
@@ -91,7 +91,7 @@ namespace SelectQuery.Lambda.Implementations
         {
             while (true)
             {
-                var result = await reader.ReadAsync();
+                var result = await reader.ReadAsync().ConfigureAwait(false);
 
                 var buffer = result.Buffer;
                 SequencePosition? position;
@@ -113,7 +113,7 @@ namespace SelectQuery.Lambda.Implementations
                 if (result.IsCompleted) break;
             }
 
-            await reader.CompleteAsync();
+            await reader.CompleteAsync().ConfigureAwait(false);
         }
 
         private static ResultRow DeserializeRow(ReadOnlySequence<byte> line)

@@ -57,16 +57,16 @@ namespace SelectQuery.Lambda.Implementations
                 {
                     var buffer = writer.GetMemory(4096);
 
-                    var bytes = await gzip.ReadAsync(buffer);
+                    var bytes = await gzip.ReadAsync(buffer).ConfigureAwait(false);
                     if (bytes == 0) break;
 
                     writer.Advance(bytes);
 
-                    var flush = await writer.FlushAsync();
+                    var flush = await writer.FlushAsync().ConfigureAwait(false);
                     if (flush.IsCompleted) break;
                 }
 
-                await writer.CompleteAsync();
+                await writer.CompleteAsync().ConfigureAwait(false);
             }).ConfigureAwait(false);
             
             return Reader(pipe.Reader);
@@ -76,8 +76,8 @@ namespace SelectQuery.Lambda.Implementations
         {
             while (true)
             {
-                var result = await reader.ReadAsync();
-
+                var result = await reader.ReadAsync().ConfigureAwait(false);
+                
                 var buffer = result.Buffer;
                 SequencePosition? position;
 
@@ -97,7 +97,7 @@ namespace SelectQuery.Lambda.Implementations
                 if (result.IsCompleted) break;
             }
 
-            await reader.CompleteAsync();
+            await reader.CompleteAsync().ConfigureAwait(false);
         }
 
         private static ResultRow DeserializeRow(ReadOnlySequence<byte> line)
@@ -118,7 +118,7 @@ namespace SelectQuery.Lambda.Implementations
             {
                 BucketName = bucketName,
                 Key = objectKey
-            });
+            }).ConfigureAwait(false);
             using var responseStream = response.ResponseStream;
 
             await foreach (var row in Deserialize(responseStream))
@@ -144,7 +144,7 @@ namespace SelectQuery.Lambda.Implementations
                 return new Result.Serialized(ms.ToArray());
             }
 
-            return await StoreAsync(ms, CreateResultLocation());
+            return await StoreAsync(ms, CreateResultLocation()).ConfigureAwait(false);
         }
 
         private async Task<Result> StoreAsync(Stream data, Uri dataLocation)
@@ -160,7 +160,7 @@ namespace SelectQuery.Lambda.Implementations
                 Key = objectKey,
 
                 InputStream = data
-            });
+            }).ConfigureAwait(false);
 
             return new Result.InDirect(dataLocation);
         }

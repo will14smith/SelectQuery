@@ -19,7 +19,7 @@ namespace SelectQuery.Local
 
         public IAsyncEnumerable<Result> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
         {
-            return sources.ToAsyncEnumerable().SelectAwait(async source => await _worker.QueryAsync(new WorkerInput(plan.WorkerPlan, source)));
+            return sources.ToAsyncEnumerable().SelectAwait(async source => await _worker.QueryAsync(new WorkerInput(plan.WorkerPlan, source)).ConfigureAwait(false));
         }
     }
 }

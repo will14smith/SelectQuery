@@ -26,21 +26,18 @@ namespace SelectQuery.Distribution
         {
             var plan = _planner.Plan(input.Query);
 
-            var sources = await _sourceResolver.ResolveAsync(input.Source);
+            var sources = await _sourceResolver.ResolveAsync(input.Source).ConfigureAwait(false);
             var workerResultSets = _workerExecutor.ExecuteAsync(plan, sources);
 
             // TODO ordering+limit could be more efficient using the result sets directly (it might also be required for performance)
             var workerFetchedResultSets = workerResultSets.Select(x => _resultsFetcher.FetchAsync(x));
-            var workerResults = workerFetchedResultSets.SelectMany(x =>
-            {
-                return x;
-            });
+            var workerResults = workerFetchedResultSets.SelectMany(x => x);
 
             var orderedResults = ResultProcessor.Order(plan.Order, workerResults);
             var limitedResults = ResultProcessor.Limit(plan.Limit, orderedResults);
             var results = ProjectResults(limitedResults);
 
-            return await _resultsStorer.StoreAsync(results);
+            return await _resultsStorer.StoreAsync(results).ConfigureAwait(false);
         }
 
         private static IAsyncEnumerable<ResultRow> ProjectResults(IAsyncEnumerable<ResultRow> results)

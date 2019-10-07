@@ -42,7 +42,7 @@ namespace SelectQuery.Lambda.Implementations
                     BucketName = bucketName,
                     Prefix = prefix,
                     ContinuationToken = null
-                });
+                }).ConfigureAwait(false);
 
                 objects.AddRange(response.S3Objects.Select(obj => new Uri($"s3://{bucketName}/{obj.Key}")));
 
