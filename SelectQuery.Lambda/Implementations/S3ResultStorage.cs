@@ -39,7 +39,7 @@ namespace SelectQuery.Lambda.Implementations
 
         private static IAsyncEnumerable<ResultRow> Deserialize(byte[] serializedData)
         {
-            using var stream = new MemoryStream(serializedData);
+            var stream = new MemoryStream(serializedData);
 
             return Deserialize(stream);
         }
