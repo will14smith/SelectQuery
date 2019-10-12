@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using SelectQuery.Results;
@@ -18,7 +19,7 @@ namespace SelectQuery.Lambda.Outputs
                 direct =>
                 {
                     output.WriteByte(1);
-                    using var writer = new StreamWriter(output);
+                    using var writer = new StreamWriter(output, Encoding.UTF8, 1024, true);
                     writer.Write(JsonConvert.SerializeObject(direct.Rows.Select(x => x.Fields)));
                 },
                 serialized =>
@@ -29,7 +30,7 @@ namespace SelectQuery.Lambda.Outputs
                 indirect =>
                 {
                     output.WriteByte(3);
-                    using var writer = new StreamWriter(output);
+                    using var writer = new StreamWriter(output, Encoding.UTF8, 1024, true);
                     writer.Write(indirect.Location);
                 }
             );

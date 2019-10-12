@@ -50,7 +50,7 @@ namespace SelectQuery.Lambda.Implementations
                 InputSerialization = _inputSerialization,
                 OutputSerialization = new OutputSerialization { JSON = new JSONOutput() },
             };
-            var response =  await _s3.SelectObjectContentAsync(request).ConfigureAwait(false);
+            var response = await _s3.SelectObjectContentAsync(request).ConfigureAwait(false);
 
             return response.Payload;
         }
@@ -89,6 +89,8 @@ namespace SelectQuery.Lambda.Implementations
 
         public static async IAsyncEnumerable<ResultRow> Reader(PipeReader reader)
         {
+            var keys = new FastSerializableKeys<string>();
+
             while (true)
             {
                 var result = await reader.ReadAsync().ConfigureAwait(false);
@@ -101,7 +103,7 @@ namespace SelectQuery.Lambda.Implementations
                     position = buffer.PositionOf((byte)'\n');
                     if (position == null) continue;
 
-                    var row = DeserializeRow(buffer.Slice(0, position.Value));
+                    var row = DeserializeRow(keys, buffer.Slice(0, position.Value));
                     yield return row;
 
                     buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
@@ -116,10 +118,47 @@ namespace SelectQuery.Lambda.Implementations
             await reader.CompleteAsync().ConfigureAwait(false);
         }
 
-        private static ResultRow DeserializeRow(ReadOnlySequence<byte> line)
+        private static ResultRow DeserializeRow(FastSerializableKeys<string> keys, ReadOnlySequence<byte> line)
         {
+            var fields = new FastSerializableDictionary<string, object>(keys);
             var reader = new Utf8JsonReader(line);
-            var fields = JsonSerializer.Deserialize<Dictionary<string, object>>(ref reader);
+
+            var foundStart = false;
+            while (reader.Read())
+            {
+                if (!foundStart)
+                {
+                    if (reader.TokenType != JsonTokenType.StartObject)
+                    {
+                        throw new FormatException();
+                    }
+                    foundStart = true;
+                    continue;
+                }
+
+                if (reader.TokenType == JsonTokenType.EndObject)
+                {
+                    if (reader.BytesConsumed != line.Length)
+                    {
+                        throw new FormatException();
+                    }
+                    break;
+                }
+
+                if (reader.TokenType != JsonTokenType.PropertyName)
+                {
+                    throw new ArgumentOutOfRangeException();
+                }
+
+                var key = reader.GetString();
+                if (!reader.Read())
+                {
+                    throw new FormatException();
+                }
+
+                fields[key] = reader.FastReadObject<object>();
+            }
+
             return new ResultRow(fields);
         }
     }
