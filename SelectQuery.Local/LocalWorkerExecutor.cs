@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Linq;
 using SelectQuery.Distribution;
 using SelectQuery.Results;
 using SelectQuery.Workers;
@@ -17,9 +16,9 @@ namespace SelectQuery.Local
             _worker = worker;
         }
 
-        public IAsyncEnumerable<Result> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
+        public IAsyncEnumerable<Result> ExecuteAsync(WorkerPlan plan, IReadOnlyList<Uri> sources)
         {
-            return sources.ToAsyncEnumerable().SelectAwait(async source => await _worker.QueryAsync(new WorkerInput(plan.WorkerPlan, source)).ConfigureAwait(false));
+            return sources.ToAsyncEnumerable().SelectAwait(async source => await _worker.QueryAsync(new WorkerInput(plan, source)).ConfigureAwait(false));
         }
     }
 }

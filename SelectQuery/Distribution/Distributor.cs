@@ -27,7 +27,7 @@ namespace SelectQuery.Distribution
             var plan = _planner.Plan(input.Query);
 
             var sources = await _sourceResolver.ResolveAsync(input.Source).ConfigureAwait(false);
-            var workerResultSets = _workerExecutor.ExecuteAsync(plan, sources);
+            var workerResultSets = _workerExecutor.ExecuteAsync(plan.WorkerPlan, sources);
 
             // TODO ordering+limit could be more efficient using the result sets directly (it might also be required for performance)
             var workerFetchedResultSets = workerResultSets.Select(x => _resultsFetcher.FetchAsync(x));

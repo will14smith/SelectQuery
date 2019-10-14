@@ -5,13 +5,14 @@ using OneOf.Types;
 using SelectParser;
 using SelectQuery.Distribution;
 using SelectQuery.Results;
+using SelectQuery.Workers;
 using Xunit;
 
 namespace SelectQuery.Tests.Fakes
 {
     public class FakeWorkerExecutor : IWorkerExecutor
     {
-        public Option<DistributorPlan> ExpectedPlan { get; set; } = new None();
+        public Option<WorkerPlan> ExpectedPlan { get; set; } = new None();
         public Option<IReadOnlyList<Uri>> ExpectedSources { get; set; } = new None();
 
         private readonly IReadOnlyCollection<Result> _results;
@@ -21,7 +22,7 @@ namespace SelectQuery.Tests.Fakes
             _results = results;
         }
 
-        public IAsyncEnumerable<Result> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
+        public IAsyncEnumerable<Result> ExecuteAsync(WorkerPlan plan, IReadOnlyList<Uri> sources)
         {
             if (ExpectedPlan.IsSome)
             {

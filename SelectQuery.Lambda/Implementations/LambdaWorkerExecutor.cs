@@ -10,6 +10,7 @@ using SelectQuery.Distribution;
 using SelectQuery.Lambda.Inputs;
 using SelectQuery.Lambda.Outputs;
 using SelectQuery.Results;
+using SelectQuery.Workers;
 
 namespace SelectQuery.Lambda.Implementations
 {
@@ -24,12 +25,12 @@ namespace SelectQuery.Lambda.Implementations
             _workerFunctionName = workerFunctionName;
         }
 
-        public IAsyncEnumerable<Result> ExecuteAsync(DistributorPlan plan, IReadOnlyList<Uri> sources)
+        public IAsyncEnumerable<Result> ExecuteAsync(WorkerPlan plan, IReadOnlyList<Uri> sources)
         {
             return sources.ToObservable().SelectMany(source => ExecuteAsync(plan, source)).ToAsyncEnumerable();
         }
 
-        private async Task<Result> ExecuteAsync(DistributorPlan plan, Uri source)
+        private async Task<Result> ExecuteAsync(WorkerPlan plan, Uri source)
         {
             var input = new WorkerPublicInput
             {
