@@ -103,17 +103,6 @@ namespace SelectQuery.Tests
 
             AssertResultsEqual(expectedResults, results);
         }
-        [Fact]
-        public async Task LimitOffset_ShouldLimitResults()
-        {
-            var limit = new LimitClause(1, 1);
-            var input = new[] { CreateRow(("id", 1)), CreateRow(("id", 2)), CreateRow(("id", 3)) };
-            var expectedResults = new[] { input[1] };
-
-            var results = await ResultProcessor.Limit(limit, input.ToAsyncEnumerable()).ToListAsync();
-
-            AssertResultsEqual(expectedResults, results);
-        }
         #endregion
     }
 }

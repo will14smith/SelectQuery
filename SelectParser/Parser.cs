@@ -252,17 +252,10 @@ namespace SelectParser
         #endregion
 
         #region limit
-
-        private static readonly TokenListParser<SelectToken, int> OffsetClause =
-            from offset in Token.EqualTo(SelectToken.Offset)
-            from number in Number.Select(x => (int)x)
-            select number;
-
         public static readonly TokenListParser<SelectToken, LimitClause> LimitClause =
             from limit in Token.EqualTo(SelectToken.Limit)
             from number in Number.Select(x => (int)x)
-            from offset in OffsetClause.Select(x => (Option<int>)x).OptionalOrDefault(new None())
-            select new LimitClause(number, offset);
+            select new LimitClause(number);
         #endregion
 
         public static readonly TokenListParser<SelectToken, Query> Query =

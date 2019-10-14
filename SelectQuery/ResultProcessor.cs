@@ -46,9 +46,7 @@ namespace SelectQuery
             if (limitOpt.IsNone) return results;
             var limit = limitOpt.AsT0;
 
-            var offset = limit.Offset.Match(x => x, _ => 0);
-
-            return results.Skip(offset).Take(limit.Limit);
+            return results.Take(limit.Limit);
         }
     }
 }

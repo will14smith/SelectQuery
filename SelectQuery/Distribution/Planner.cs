@@ -26,14 +26,13 @@ namespace SelectQuery.Distribution
             if (input.Limit.IsSome)
             {
                 var limitValue = input.Limit.AsT0;
-                var offsetValue = limitValue.Offset.Match(x => x, _ => 0);
 
                 limit = limitValue;
 
                 // we can't sort on the underlying query so we need to load the whole result set
                 if (input.Order.IsNone)
                 {
-                    underlyingLimit = new LimitClause(limitValue.Limit + offsetValue, new None());
+                    underlyingLimit = new LimitClause(limitValue.Limit);
                 }
             }
 

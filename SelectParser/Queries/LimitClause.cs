@@ -1,22 +1,19 @@
-﻿using OneOf.Types;
-
-namespace SelectParser.Queries
+﻿namespace SelectParser.Queries
 {
     public class LimitClause
     {
-        public LimitClause(int limit) : this(limit, new None()) { }
-        public LimitClause(int limit, Option<int> offset)
+        public LimitClause(int limit)
         {
             Limit = limit;
-            Offset = offset;
         }
 
         public int Limit { get; }
-        public Option<int> Offset { get; }
+        // TODO add key/sort based offsetting
+
 
         public override string ToString()
         {
-            return Offset.IsNone ? $"LIMIT {Limit}" : $"LIMIT {Limit} OFFSET {Offset.AsT0}";
+            return $"LIMIT {Limit}";
         }
     }
 }

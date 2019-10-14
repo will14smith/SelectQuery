@@ -126,7 +126,6 @@ namespace SelectQuery.Tests
         public static void AssertEqual(LimitClause expected, LimitClause actual)
         {
             Assert.Equal(expected.Limit, actual.Limit);
-            Assert.Equal(expected.Offset, actual.Offset);
         }
         #endregion
     }

@@ -31,8 +31,9 @@ namespace SelectQuery.Tests.Distribution
             AssertNone(plan.Limit);
         }
 
+        #region Query with ordering and limit
         [Fact]
-        public void QueryWithOrderingAndLimits_Underlying_ShouldNotLimit()
+        public void QueryWithOrderingAndLimit_Underlying_ShouldNotLimit()
         {
             var query = ParseQuery("SELECT id, name FROM table ORDER BY name LIMIT 10");
             var planner = new Planner();
@@ -42,6 +43,29 @@ namespace SelectQuery.Tests.Distribution
             var expectedUnderlyingQuery = ParseQuery("SELECT id, name FROM table");
             AssertEqual(expectedUnderlyingQuery, plan.UnderlyingQuery);
         }
+        [Fact]
+        public void QueryWithOrderingAndLimit_DistributorLimit_ShouldLimit()
+        {
+            var query = ParseQuery("SELECT id, name FROM table ORDER BY name LIMIT 10");
+            var planner = new Planner();
+
+            var plan = planner.Plan(query);
+
+            var distributorLimit = AssertSome(plan.Limit);
+            Assert.Equal(10, distributorLimit.Limit);
+        }
+        [Fact]
+        public void QueryWithOrderingAndLimit_WorkerLimit_ShouldLimit()
+        {
+            var query = ParseQuery("SELECT id, name FROM table ORDER BY name LIMIT 10");
+            var planner = new Planner();
+
+            var plan = planner.Plan(query);
+
+            var workerLimit = AssertSome(plan.WorkerPlan.Limit);
+            Assert.Equal(10, workerLimit.Limit);
+        }
+        #endregion
 
         #region Query with ordering
         [Fact]
@@ -133,30 +157,6 @@ namespace SelectQuery.Tests.Distribution
 
             var limit = AssertSome(plan.Limit);
             Assert.Equal(10, limit.Limit);
-        }
-
-        [Fact]
-        public void QueryWithLimitAndOffset_UnderlyingQuery_ShouldTransformLimit()
-        {
-            var query = ParseQuery("SELECT * FROM table WHERE x = 1 LIMIT 10 OFFSET 30");
-            var planner = new Planner();
-
-            var plan = planner.Plan(query);
-
-            var expected = ParseQuery("SELECT * FROM table WHERE x = 1 LIMIT 40");
-            AssertEqual(expected, plan.UnderlyingQuery);
-        }
-        [Fact]
-        public void QueryWithLimitAndOffset_Limit_ShouldNotBeNone()
-        {
-            var query = ParseQuery("SELECT * FROM table WHERE x = 1 LIMIT 10 OFFSET 30");
-            var planner = new Planner();
-
-            var plan = planner.Plan(query);
-
-            var limit = AssertSome(plan.Limit);
-            Assert.Equal(10, limit.Limit);
-            Assert.Equal(30, limit.Offset);
         }
         #endregion
     }
