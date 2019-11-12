@@ -40,7 +40,10 @@ namespace SelectQuery.Lambda
 
         private static S3SelectExecutor CreateExecutor()
         {
-            var s3 = new AmazonS3Client();
+            var s3 = new AmazonS3Client(new AmazonS3Config
+            {
+                BufferSize = 256 * 1024,
+            });
             var inputSerialization = new InputSerialization
             {
                 JSON = new JSONInput { JsonType = JsonType.Lines },
@@ -51,7 +54,10 @@ namespace SelectQuery.Lambda
         }
         private static S3ResultStorage CreateStorage()
         {
-            var s3 = new AmazonS3Client();
+            var s3 = new AmazonS3Client(new AmazonS3Config
+            {
+                BufferSize = 256 * 1024,
+            });
             var resultBucket = Environment.GetEnvironmentVariable("RESULT_BUCKET_NAME");
 
             return new S3ResultStorage(s3, resultBucket);
@@ -80,7 +86,7 @@ namespace SelectQuery.Lambda
 
             return new WorkerInput(plan, input.DataLocation);
         }
-        
+
         private static T Parse<T>(TokenListParser<SelectToken, T> parser, string input)
         {
             var tokenizer = new SelectTokenizer();

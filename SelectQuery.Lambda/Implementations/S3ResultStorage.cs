@@ -4,11 +4,12 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Pipelines;
 using System.Linq;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
+using MessagePack;
 using SelectQuery.Results;
+using Utf8Json;
 
 namespace SelectQuery.Lambda.Implementations
 {
@@ -78,26 +79,35 @@ namespace SelectQuery.Lambda.Implementations
                 var result = await reader.ReadAsync().ConfigureAwait(false);
 
                 var buffer = result.Buffer;
-                SequencePosition? position;
 
-                do
+                while (true)
                 {
-                    position = buffer.PositionOf((byte)'\n');
-                    if (position == null) continue;
+                    if (!buffer.TryRead(out int length))
+                    {
+                        break;
+                    }
+
+                    var itemStart = buffer.Slice(4);
+                    if (itemStart.Length < length)
+                    {
+                        break;
+                    }
+
+                    var item = itemStart.Slice(0, length);
 
                     if (keys == null)
                     {
-                        keys = DeserializeKeys(buffer.Slice(0, position.Value));
+                        keys = DeserializeKeys(item);
                     }
                     else
                     {
-                        yield return DeserializeRow(keys, buffer.Slice(0, position.Value));
+                        yield return DeserializeRow(keys, item);
                     }
 
-                    buffer = buffer.Slice(buffer.GetPosition(1, position.Value));
 
-                } while (position != null);
-
+                    buffer = buffer.Slice(length);
+                }
+                
                 reader.AdvanceTo(buffer.Start, buffer.End);
 
                 if (result.IsCompleted) break;
@@ -159,7 +169,7 @@ namespace SelectQuery.Lambda.Implementations
                 }
                 else
                 {
-                    await JsonSerializer.SerializeAsync(ms, fields).ConfigureAwait(false);
+                    JsonSerializer.Serialize(ms, fields);
                 }
 
                 ms.WriteByte((byte)'\n');

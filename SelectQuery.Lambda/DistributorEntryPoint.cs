@@ -55,7 +55,10 @@ namespace SelectQuery.Lambda
         }
         private static S3ResultStorage CreateStorage()
         {
-            var s3 = new AmazonS3Client();
+            var s3 = new AmazonS3Client(new AmazonS3Config
+            {
+                BufferSize = 256 * 1024,
+            });
             var resultBucket = Environment.GetEnvironmentVariable("RESULT_BUCKET_NAME");
 
             return new S3ResultStorage(s3, resultBucket);

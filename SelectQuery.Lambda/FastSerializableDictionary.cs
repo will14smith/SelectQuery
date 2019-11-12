@@ -3,7 +3,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.Json;
+using Utf8Json;
 
 namespace SelectQuery.Lambda
 {
@@ -49,46 +49,51 @@ namespace SelectQuery.Lambda
         {
             var values = ArrayPool<TValue>.Shared.Rent(keys.Length);
 
-            var reader = new Utf8JsonReader(stream);
+            // TODO allocation :(
+            var reader = new JsonReader(stream.ToArray());
 
-            if (!reader.Read())
-            {
-                throw new FormatException("Invalid start");
-            }
-            if (reader.TokenType != JsonTokenType.StartArray)
+            if (!reader.ReadIsBeginArray())
             {
                 throw new FormatException("Invalid start");
             }
 
             var index = 0;
-            while (reader.Read())
+            while (!reader.ReadIsEndArray())
             {
-                if (reader.TokenType == JsonTokenType.EndArray) break;
-                
-                var value = reader.FastReadObject<TValue>();
-                values[index++] = value;
-            }
+                if (index > 0)
+                {
+                    reader.ReadIsValueSeparatorWithVerify();
+                }
 
-            if (reader.TokenType != JsonTokenType.EndArray)
-            {
-                throw new FormatException("Unexpected end of input");
+                var value = JsonSerializer.Deserialize<TValue>(ref reader);
+                values[index++] = value;
             }
 
             return new FastSerializableDictionary<TKey, TValue>(keys, values);
         }
         public void Serialize(IBufferWriter<byte> stream)
         {
-            using var writer = new Utf8JsonWriter(stream);
-            
-            writer.WriteStartArray();
+            var writer = new JsonWriter();
+
+            writer.WriteBeginArray();
 
             for (var index = 0; index < _keys.Keys.Count; index++)
             {
+                if (index > 0)
+                {
+                    writer.WriteValueSeparator();
+                }
+
                 var value = _values[index];
-                JsonSerializer.Serialize(writer, value);
+                JsonSerializer.Serialize(ref writer, value);
             }
 
             writer.WriteEndArray();
+
+            var o = writer.GetBuffer();
+            var memory = stream.GetMemory(o.Count);
+            o.Array.AsSpan(o.Offset, o.Count).CopyTo(memory.Span);
+            stream.Advance(o.Count);
         }
 
         public int Count => _keys.Length;
@@ -162,43 +167,27 @@ namespace SelectQuery.Lambda
 
         public static FastSerializableKeys<TKey> Deserialize(ReadOnlySequence<byte> stream)
         {
-            var reader = new Utf8JsonReader(stream);
+            // TODO allocation :(
+            var reader = new JsonReader(stream.ToArray());
 
-            if (!reader.Read())
-            {
-                throw new FormatException("Invalid start");
-            }
-            if (reader.TokenType != JsonTokenType.StartArray)
+            if (!reader.ReadIsBeginArray())
             {
                 throw new FormatException("Invalid start");
             }
 
-            if (!reader.Read())
-            {
-                throw new FormatException("Length not found");
-            }
-            if (!reader.TryGetInt32(out var length))
-            {
-                throw new FormatException("Length not found");
-            }
+            var length = reader.ReadInt32();
 
             var keys = new List<TKey>(length);
             var lookup = new Dictionary<TKey, int>();
 
             var index = 0;
-            while (reader.Read())
+            while (!reader.ReadIsEndArray())
             {
-                if (reader.TokenType == JsonTokenType.EndArray) break;
-
-                var value = reader.FastReadObject<TKey>();
+                reader.ReadIsValueSeparatorWithVerify();
+                var value = JsonSerializer.Deserialize<TKey>(ref reader);
 
                 keys.Add(value);
                 lookup.Add(value, index++);
-            }
-
-            if (reader.TokenType != JsonTokenType.EndArray)
-            {
-                throw new FormatException("Unexpected end of input");
             }
 
             if (index != length)
@@ -210,18 +199,26 @@ namespace SelectQuery.Lambda
         }
         public void Serialize(IBufferWriter<byte> stream)
         {
-            using var writer = new Utf8JsonWriter(stream);
+            var writer = new JsonWriter();
 
-            writer.WriteStartArray();
+            writer.WriteBeginArray();
 
-            writer.WriteNumberValue(_keys.Count);
-            
+            writer.WriteInt32(_keys.Count);
+
             foreach (var value in _keys)
             {
-                JsonSerializer.Serialize(writer, value);
+                writer.WriteValueSeparator();
+                JsonSerializer.Serialize(ref writer, value);
             }
 
             writer.WriteEndArray();
+
+
+            var o = writer.GetBuffer();
+            var memory = stream.GetMemory(o.Count);
+            o.Array.AsSpan(o.Offset, o.Count).CopyTo(memory.Span);
+            stream.Advance(o.Count);
+
         }
 
         public bool TryGetKey(TKey key, out int index)

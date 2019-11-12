@@ -2,13 +2,13 @@
 using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.S3;
 using Amazon.S3.Model;
 using SelectParser.Queries;
 using SelectQuery.Results;
 using SelectQuery.Workers;
+using Utf8Json;
 
 namespace SelectQuery.Lambda.Implementations
 {
@@ -121,42 +121,23 @@ namespace SelectQuery.Lambda.Implementations
         private static ResultRow DeserializeRow(FastSerializableKeys<string> keys, ReadOnlySequence<byte> line)
         {
             var fields = new FastSerializableDictionary<string, object>(keys);
-            var reader = new Utf8JsonReader(line);
+            // TODO allocation :(
+            var reader = new JsonReader(line.ToArray());
 
-            var foundStart = false;
-            while (reader.Read())
+            reader.ReadIsBeginObjectWithVerify();
+
+            while (true)
             {
-                if (!foundStart)
+                var key = reader.ReadPropertyName();
+                fields[key] = JsonSerializer.Deserialize<object>(ref reader);
+
+                if (reader.ReadIsValueSeparator())
                 {
-                    if (reader.TokenType != JsonTokenType.StartObject)
-                    {
-                        throw new FormatException();
-                    }
-                    foundStart = true;
                     continue;
                 }
 
-                if (reader.TokenType == JsonTokenType.EndObject)
-                {
-                    if (reader.BytesConsumed != line.Length)
-                    {
-                        throw new FormatException();
-                    }
-                    break;
-                }
-
-                if (reader.TokenType != JsonTokenType.PropertyName)
-                {
-                    throw new ArgumentOutOfRangeException();
-                }
-
-                var key = reader.GetString();
-                if (!reader.Read())
-                {
-                    throw new FormatException();
-                }
-
-                fields[key] = reader.FastReadObject<object>();
+                reader.ReadIsEndObjectWithVerify();
+                break;
             }
 
             return new ResultRow(fields);
