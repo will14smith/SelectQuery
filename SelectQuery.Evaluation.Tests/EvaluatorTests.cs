@@ -28,7 +28,7 @@ namespace SelectQuery.Evaluation.Tests
 
         [Theory]
 
-        [InlineData("SELECT * FROM s3object s", ProjectionRecord)]
+        [InlineData("SELECT * FROM s3object", ProjectionRecord)]
         [InlineData("SELECT s.a FROM s3object s", @"{""a"":1}")]
         [InlineData("SELECT s.a as b FROM s3object s", @"{""b"":1}")]
         [InlineData("SELECT s.a, s.c FROM s3object s", @"{""a"":1,""c"":[1,2,3]}")]

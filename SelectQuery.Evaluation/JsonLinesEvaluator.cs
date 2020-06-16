@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using SelectParser.Queries;
 using Utf8Json;
 using Utf8Json.Resolvers;
@@ -44,7 +45,22 @@ namespace SelectQuery.Evaluation
                 throw new NotImplementedException("ordering is not currently supported");
             }
 
+            if (query.Select.IsT1 && query.Select.AsT1.Columns.Any(x => IsQualifiedStar(x.Expression)))
+            {
+                throw new NotImplementedException("qualified star projections not currently supported");
+            }
+
             // TODO validate query semantics?
+        }
+
+        private static bool IsQualifiedStar(Expression expr)
+        {
+            while (true)
+            {
+                if (expr.IsT3) return expr.AsT3.Name == "*";
+                if (!expr.IsT4) return false;
+                expr = expr.AsT4.Expression;
+            }
         }
 
         private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer)
