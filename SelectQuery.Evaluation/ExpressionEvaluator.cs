@@ -8,7 +8,7 @@ namespace SelectQuery.Evaluation
     {
         public T Evaluate<T>(Expression expression, object obj)
         {
-            return expression.Match(
+            var value = expression.Match(
                 strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
                 numLiteral => (T)(object)EvaluateNumberLiteral(numLiteral),
                 boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
@@ -20,6 +20,10 @@ namespace SelectQuery.Evaluation
                 inExpr => (T)(object)EvaluateIn(inExpr, obj),
                 like => (T)(object)EvaluateLike(like, obj)
             );
+
+            // normalize result values, utf8json parses numbers are decimal but we want doubles
+            if (value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
+            return value;
         }
 
         private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
@@ -75,9 +79,6 @@ namespace SelectQuery.Evaluation
             var left = Evaluate<object>(binary.Left, obj);
             var right = Evaluate<object>(binary.Right, obj);
 
-            if (left is double leftDbl) left = Convert.ToDecimal(leftDbl);
-            if (right is double rightDbl) right = Convert.ToDecimal(rightDbl);
-
             if (binary.Operator == BinaryOperator.Add)
             {
                 return (T) EvaluateAddition(left, right);
@@ -132,7 +133,19 @@ namespace SelectQuery.Evaluation
 
         private bool EvaluateIn(Expression.In inExpr, object obj)
         {
-            throw new NotImplementedException();
+            var value = Evaluate<object>(inExpr.Expression, obj);
+
+            foreach (var matchExpr in inExpr.Matches)
+            {
+                var matchValue = Evaluate<object>(matchExpr, obj);
+
+                if (EvaluateEquality(value, matchValue))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private bool EvaluateLike(Expression.Like like, object obj)
