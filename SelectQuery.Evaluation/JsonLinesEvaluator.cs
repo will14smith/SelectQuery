@@ -57,7 +57,7 @@ namespace SelectQuery.Evaluation
 
             var obj = Formatter.Deserialize(ref reader, StandardResolver.Default);
 
-            var wherePassed = _query.Where.Match(where => ExpressionEvaluator.Evaluate<bool>(where.Condition, obj), _ => true);
+            var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, obj), _ => true);
             if (!wherePassed)
             {
                 return false;

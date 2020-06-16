@@ -1,13 +1,18 @@
 ﻿using System;
+using System.Collections.Generic;
 using SelectParser.Queries;
 using Utf8Json;
+using Utf8Json.Resolvers;
 
 namespace SelectQuery.Evaluation
 {
     public class JsonRecordWriter
     {
-        private FromClause _from;
-        private SelectClause _select;
+        private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
+        private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
+
+        private readonly FromClause _from;
+        private readonly SelectClause _select;
 
         public JsonRecordWriter(FromClause from, SelectClause select)
         {
@@ -17,7 +22,70 @@ namespace SelectQuery.Evaluation
 
         public void Write(ref JsonWriter writer, object obj)
         {
-            throw new NotImplementedException();
+            if (_select.IsT0)
+            {
+                WriteStar(ref writer, obj);
+            }
+            else
+            {
+                writer.WriteBeginObject();
+                WriteColumns(ref writer, _select.AsT1.Columns, obj);
+                writer.WriteEndObject();
+            }
+        }
+
+        private static void WriteStar(ref JsonWriter writer, object obj)
+        {
+            Formatter.Serialize(ref writer, obj, StandardResolver.Default);
+        }
+
+        private void WriteColumns(ref JsonWriter writer, IReadOnlyList<Column> columns, object obj)
+        {
+            for (var index = 0; index < columns.Count; index++)
+            {
+                if (index > 0)
+                {
+                    writer.WriteValueSeparator();
+                }
+
+                var column = columns[index];
+                var value = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+
+                writer.WritePropertyName(GetColumnName(index, column));
+                Formatter.Serialize(ref writer, value, StandardResolver.Default);
+            }
+        }
+
+        private static string GetColumnName(int index, Column column)
+        {
+            if (column.Alias.IsSome)
+            {
+                return column.Alias.AsT0;
+            }
+
+            var expression = column.Expression;
+            return GetColumnName(index, expression);
+        }
+
+        private static string GetColumnName(int index, Expression expression)
+        {
+            while (true)
+            {
+                if (expression.IsT3)
+                {
+                    // use the identifier name
+                    return expression.AsT3.Name;
+                }
+
+                if (!expression.IsT4)
+                {
+                    // default is _N for the Nth column (1 indexed)
+                    return $"_{index + 1}";
+                }
+
+                // recurse down qualified expressions
+                expression = expression.AsT4.Expression;
+            }
         }
     }
 }
