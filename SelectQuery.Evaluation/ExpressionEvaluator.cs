@@ -61,12 +61,68 @@ namespace SelectQuery.Evaluation
 
         private T EvaluateUnary<T>(Expression.Unary unary, object obj)
         {
-            throw new NotImplementedException();
+            return (T) (object) (unary.Operator switch
+            {
+                UnaryOperator.Not => !Evaluate<bool>(unary.Expression, obj),
+                UnaryOperator.Negate => -Evaluate<decimal>(unary.Expression, obj),
+
+                _ => throw new ArgumentOutOfRangeException()
+            });
         }
 
         private T EvaluateBinary<T>(Expression.Binary binary, object obj)
         {
-            throw new NotImplementedException();
+            var left = Evaluate<object>(binary.Left, obj);
+            var right = Evaluate<object>(binary.Right, obj);
+
+            if (left is double leftDbl) left = Convert.ToDecimal(leftDbl);
+            if (right is double rightDbl) right = Convert.ToDecimal(rightDbl);
+
+            if (binary.Operator == BinaryOperator.Add)
+            {
+                return (T) EvaluateAddition(left, right);
+            }
+
+            // propagate nulls
+            if (left == null || right == null) return default;
+
+            return (T) (object) (binary.Operator switch
+            {
+                BinaryOperator.And => (bool)left && (bool)right,
+                BinaryOperator.Or => (bool)left || (bool)right,
+                BinaryOperator.Lesser => (decimal)left < (decimal)right,
+                BinaryOperator.Greater => (decimal)left > (decimal)right,
+                BinaryOperator.LesserOrEqual => (decimal)left <= (decimal)right,
+                BinaryOperator.GreaterOrEqual => (decimal)left >= (decimal)right,
+
+                BinaryOperator.Equal => EvaluateEquality(left, right),
+                BinaryOperator.NotEqual => !EvaluateEquality(left, right),
+
+                BinaryOperator.Subtract => (decimal) left - (decimal) right,
+                BinaryOperator.Multiply => (decimal) left * (decimal) right,
+                BinaryOperator.Divide => (decimal) left / (decimal) right,
+                BinaryOperator.Modulo => (decimal) left % (decimal) right,
+
+                _ => throw new ArgumentOutOfRangeException()
+            });
+        }
+
+        private object EvaluateAddition(object left, object right)
+        {
+            if (left is decimal leftNum && right is decimal rightNum)
+            {
+                return leftNum + rightNum;
+            }
+
+            if (left is null) return right?.ToString();
+            if (right is null) return null;
+
+            return $"{left}{right}";
+        }
+
+        private bool EvaluateEquality(object left, object right)
+        {
+            return Equals(left, right);
         }
 
         private bool EvaluateBetween(Expression.Between between, object obj)

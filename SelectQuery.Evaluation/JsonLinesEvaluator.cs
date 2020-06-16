@@ -74,13 +74,11 @@ namespace SelectQuery.Evaluation
             var obj = Formatter.Deserialize(ref reader, StandardResolver.Default);
 
             var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, obj), _ => true);
-            if (!wherePassed)
+            if (wherePassed)
             {
-                return false;
+                _recordWriter.Write(ref writer, obj);
+                writer.WriteRaw((byte) '\n');
             }
-
-            _recordWriter.Write(ref writer, obj);
-            writer.WriteRaw((byte) '\n');
 
             return true;
         }
