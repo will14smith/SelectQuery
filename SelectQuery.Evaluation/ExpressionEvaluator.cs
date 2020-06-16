@@ -8,6 +8,67 @@ namespace SelectQuery.Evaluation
     {
         public T Evaluate<T>(Expression expression, object obj)
         {
+            return expression.Match(
+                strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
+                numLiteral => (T)(object)EvaluateNumberLiteral(numLiteral),
+                boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
+                identifier => EvaluateIdentifier<T>(identifier, obj),
+                qualified => EvaluateQualified<T>(qualified, obj),
+                unary => EvaluateUnary<T>(unary, obj),
+                binary => EvaluateBinary<T>(binary, obj),
+                between => (T)(object)EvaluateBetween(between, obj),
+                inExpr => (T)(object)EvaluateIn(inExpr, obj),
+                like => (T)(object)EvaluateLike(like, obj)
+            );
+        }
+
+        private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
+        {
+            throw new NotImplementedException();
+        }
+
+        private decimal EvaluateNumberLiteral(Expression.NumberLiteral numLiteral)
+        {
+            throw new NotImplementedException();
+        }
+
+        private bool EvaluateBooleanLiteral(Expression.BooleanLiteral boolLiteral)
+        {
+            throw new NotImplementedException();
+        }
+
+        private T EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private T EvaluateQualified<T>(Expression.Qualified qualified, object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private T EvaluateUnary<T>(Expression.Unary unary, object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private T EvaluateBinary<T>(Expression.Binary binary, object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private bool EvaluateBetween(Expression.Between between, object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private bool EvaluateIn(Expression.In inExpr, object obj)
+        {
+            throw new NotImplementedException();
+        }
+
+        private bool EvaluateLike(Expression.Like like, object obj)
+        {
             throw new NotImplementedException();
         }
     }
