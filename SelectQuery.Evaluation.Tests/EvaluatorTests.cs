@@ -73,7 +73,7 @@ namespace SelectQuery.Evaluation.Tests
         private static byte[] Evaluate(Query query, string[] data)
         {
             var evaluator = new JsonLinesEvaluator(query);
-            return evaluator.Run(Encoding.UTF8.GetBytes(string.Join("\n", data)));
+            return evaluator.Run(Encoding.UTF8.GetBytes(RecordsToString(data)));
         }
 
         private void AssertResponse(string[] expected, byte[] actual)
@@ -83,7 +83,7 @@ namespace SelectQuery.Evaluation.Tests
 
         private static string RecordsToString(string[] expected)
         {
-            return string.Join("\n", expected);
+            return string.Join("\n", expected) + "\n";
         }
     }
 }

@@ -47,7 +47,7 @@ namespace SelectQuery.Evaluation
             // TODO validate query semantics?
         }
 
-        private bool ProcessRecord(ref JsonReader reader, ref JsonWriter jsonWriter)
+        private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer)
         {
             reader.SkipWhiteSpace();
             if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
@@ -63,7 +63,8 @@ namespace SelectQuery.Evaluation
                 return false;
             }
 
-            _recordWriter.Write(ref jsonWriter, obj);
+            _recordWriter.Write(ref writer, obj);
+            writer.WriteRaw((byte) '\n');
 
             return true;
         }
