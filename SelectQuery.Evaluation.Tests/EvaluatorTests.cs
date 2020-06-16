@@ -13,8 +13,8 @@ namespace SelectQuery.Evaluation.Tests
         [Theory]
 
         [InlineData("SELECT 1 FROM s3object", @"{""_1"":1}")]
-        [InlineData("SELECT 1, 'a', true FROM s3object", @"{""_1"":1,""_2"":2,""_3"":true}")]
-        [InlineData("SELECT 1 as a, 'a' FROM s3object", @"{""a"":1,""_2"":'a'}")]
+        [InlineData("SELECT 1, 'a', true FROM s3object", @"{""_1"":1,""_2"":""a"",""_3"":true}")]
+        [InlineData("SELECT 1 as a, 'a' FROM s3object", @"{""a"":1,""_2"":""a""}")]
         public void StaticDataQueries(string queryString, string expectedRecord)
         {
             var query = ParseQuery(queryString);
