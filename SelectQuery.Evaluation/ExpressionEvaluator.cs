@@ -39,12 +39,24 @@ namespace SelectQuery.Evaluation
 
         private T EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
         {
-            throw new NotImplementedException();
+            return EvaluateIdentifier<T>(identifier.Name, obj);
+        }
+
+        private T EvaluateIdentifier<T>(string identifier, object obj)
+        {
+            if (obj is IReadOnlyDictionary<string, object> dict)
+            {
+                // TODO handle casing?
+                return dict.TryGetValue(identifier, out var result) ? (T) result : default;
+            }
+
+            throw new NotImplementedException($"don't know how to get identifier ({identifier}) value from {obj?.GetType().FullName ?? "null"}");
         }
 
         private T EvaluateQualified<T>(Expression.Qualified qualified, object obj)
         {
-            throw new NotImplementedException();
+            var target = EvaluateIdentifier<object>(qualified.Qualification, obj);
+            return Evaluate<T>(qualified.Expression, target);
         }
 
         private T EvaluateUnary<T>(Expression.Unary unary, object obj)
