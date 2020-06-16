@@ -24,17 +24,17 @@ namespace SelectQuery.Evaluation
 
         private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
         {
-            throw new NotImplementedException();
+            return strLiteral.Value;
         }
 
         private decimal EvaluateNumberLiteral(Expression.NumberLiteral numLiteral)
         {
-            throw new NotImplementedException();
+            return numLiteral.Value;
         }
 
         private bool EvaluateBooleanLiteral(Expression.BooleanLiteral boolLiteral)
         {
-            throw new NotImplementedException();
+            return boolLiteral.Value;
         }
 
         private T EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
