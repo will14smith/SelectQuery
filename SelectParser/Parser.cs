@@ -270,7 +270,7 @@ namespace SelectParser
         {
             var rawValue = token.ToStringValue();
 
-            return rawValue[0] == '\''
+            return rawValue[0] == '\"'
                 ? rawValue.Substring(1, rawValue.Length - 2)
                 : rawValue.ToLower();
         }

@@ -438,6 +438,17 @@ namespace SelectParser.Tests
             Assert.Equal("test", identifier.Name);
         }
         [Fact]
+        public void ParsingQuoted()
+        {
+            var input = "\"test\"";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var identifier = Assert.IsType<Expression.Identifier>(expression);
+            Assert.Equal("test", identifier.Name);
+        }
+        [Fact]
         public void ParsingQualified()
         {
             var input = "a.b";
