@@ -19,6 +19,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SelectQuery.Evaluation", "S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SelectQuery.Evaluation.Tests", "SelectQuery.Evaluation.Tests\SelectQuery.Evaluation.Tests.csproj", "{B8650321-BEE1-4A88-BC9C-0D6F96A850E9}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{958CFBED-EDED-4C07-A732-155007C8B622}"
+ProjectSection(SolutionItems) = preProject
+	.github\workflows\test.yml = .github\workflows\test.yml
+	.github\workflows\deploy.yml = .github\workflows\deploy.yml
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
