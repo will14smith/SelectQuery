@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Amazon;
-using Amazon.Runtime;
 using Amazon.Runtime.CredentialManagement;
 using Amazon.S3;
 using Amazon.S3.Model;
-using JetBrains.Profiler.Api;
 using SelectParser;
 using SelectParser.Queries;
 using SelectQuery.Distribution;
