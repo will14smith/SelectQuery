@@ -471,24 +471,26 @@ namespace SelectParser.Tests
         [Fact]
         public void ParsingIdentifier()
         {
-            var input = "test";
+            var input = "Test";
 
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
             var identifier = Assert.IsType<Expression.Identifier>(expression);
-            Assert.Equal("test", identifier.Name);
+            Assert.Equal("Test", identifier.Name);
+            Assert.False(identifier.CaseSensitive);
         }
         [Fact]
         public void ParsingQuoted()
         {
-            var input = "\"test\"";
+            var input = "\"Test\"";
 
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
             var identifier = Assert.IsType<Expression.Identifier>(expression);
-            Assert.Equal("test", identifier.Name);
+            Assert.Equal("Test", identifier.Name);
+            Assert.True(identifier.CaseSensitive);
         }
         [Fact]
         public void ParsingQualified()
@@ -499,7 +501,20 @@ namespace SelectParser.Tests
 
             var expression = AssertSuccess(result);
             var qualified = Assert.IsType<Expression.Qualified>(expression);
-            Assert.Equal("a", qualified.Qualification);
+            Assert.Equal("a", qualified.Qualification.Name);
+            AssertIdentifier("b", qualified.Expression);
+        }
+        [Fact]
+        public void ParsingQuotedQualified()
+        {
+            var input = "\"a\".b";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var qualified = Assert.IsType<Expression.Qualified>(expression);
+            Assert.Equal("a", qualified.Qualification.Name);
+            Assert.True(qualified.Qualification.CaseSensitive);
             AssertIdentifier("b", qualified.Expression);
         }
         [Fact]
@@ -511,7 +526,7 @@ namespace SelectParser.Tests
 
             var expression = AssertSuccess(result);
             var qualified = Assert.IsType<Expression.Qualified>(expression);
-            Assert.Equal("a", qualified.Qualification);
+            Assert.Equal("a", qualified.Qualification.Name);
             AssertIdentifier("*", qualified.Expression);
         }
         [Fact]

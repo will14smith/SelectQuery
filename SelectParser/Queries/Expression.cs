@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using OneOf;
 
@@ -96,12 +97,18 @@ namespace SelectParser.Queries
 
         public class Identifier : Expression
         {
-            public Identifier(string name) => Name = name;
+            public Identifier(string name, bool caseSensitive)
+            {
+                Name = name;
+                CaseSensitive = caseSensitive;
+            }
+
             public string Name { get; }
+            public bool CaseSensitive { get; }
 
             protected bool Equals(Identifier other)
             {
-                return Name == other.Name;
+                return Name == other.Name && CaseSensitive == other.CaseSensitive;
             }
 
             public override bool Equals(object obj)
@@ -111,7 +118,23 @@ namespace SelectParser.Queries
 
             public override int GetHashCode()
             {
-                return Name?.GetHashCode() ?? 0;
+                unchecked
+                {
+                    int hashCode = base.GetHashCode();
+                    hashCode = (hashCode * 397) ^ (Name?.GetHashCode() ?? 0);
+                    hashCode = (hashCode * 397) ^ CaseSensitive.GetHashCode();
+                    return hashCode;
+                }
+            }
+
+            public static bool operator ==(Identifier left, Identifier right)
+            {
+                return Equals(left, right);
+            }
+
+            public static bool operator !=(Identifier left, Identifier right)
+            {
+                return !Equals(left, right);
             }
 
             public override string ToString()
@@ -122,18 +145,18 @@ namespace SelectParser.Queries
         }
         public class Qualified : Expression
         {
-            public Qualified(string qualification, Expression expression)
+            public Qualified(Identifier qualification, Expression expression)
             {
                 Qualification = qualification;
                 Expression = expression;
             }
 
-            public string Qualification { get; }
+            public Identifier Qualification { get; }
             public Expression Expression { get; }
 
             protected bool Equals(Qualified other)
             {
-                return Qualification == other.Qualification && Equals(Expression, other.Expression);
+                return Equals(Qualification, other.Qualification) && Equals(Expression, other.Expression);
             }
 
             public override bool Equals(object obj)

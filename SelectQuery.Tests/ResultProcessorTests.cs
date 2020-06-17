@@ -76,7 +76,7 @@ namespace SelectQuery.Tests
 
         private static OrderClause Order(params (string Key, OrderDirection Direction)[] columns)
         {
-            return new OrderClause(columns.Select(x => ((Expression)new Expression.Identifier(x.Key), x.Direction)).ToList());
+            return new OrderClause(columns.Select(x => ((Expression)new Expression.Identifier(x.Key, false), x.Direction)).ToList());
         }
         #endregion
 

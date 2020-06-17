@@ -76,7 +76,7 @@ namespace SelectQuery.Distribution
             private void BuildStar(SelectClause.Star star)
             {
                 var table = _input.From.Alias.Match(x => x, _ => _input.From.Table);
-                _underlyingSelect.Add(new Column(new Expression.Qualified(table, new Expression.Identifier("*"))));
+                _underlyingSelect.Add(new Column(new Expression.Qualified(new Expression.Identifier(table, false), new Expression.Identifier("*", false))));
 
                 foreach (var (orderExpression, orderDirection) in _order.Columns)
                 {
@@ -105,7 +105,7 @@ namespace SelectQuery.Distribution
                     if (!selectColumn.Expression.Equals(orderExpression)) continue;
 
                     var columnName = GetProjectedColumnName(selectColumn, i);
-                    var expr = new Expression.Identifier(columnName);
+                    var expr = new Expression.Identifier(columnName, false);
 
                     _orderColumns.Add((expr, orderDirection));
                     return true;
@@ -117,7 +117,7 @@ namespace SelectQuery.Distribution
             private void AddInternalColumn(Expression orderExpression, OrderDirection orderDirection)
             {
                 var alias = $"__internal__order_{_counter++}";
-                _orderColumns.Add((new Expression.Identifier(alias), orderDirection));
+                _orderColumns.Add((new Expression.Identifier(alias, false), orderDirection));
                 _underlyingSelect.Add(new Column(orderExpression, alias));
             }
 

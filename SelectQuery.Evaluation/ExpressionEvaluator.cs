@@ -45,11 +45,6 @@ namespace SelectQuery.Evaluation
 
         private T EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
         {
-            return EvaluateIdentifier<T>(identifier.Name, obj);
-        }
-
-        private T EvaluateIdentifier<T>(string identifier, object obj)
-        {
             if (obj is null)
             {
                 return default;
@@ -58,15 +53,20 @@ namespace SelectQuery.Evaluation
             if (obj is IReadOnlyDictionary<string, object> dict)
             {
                 // fast: match exact key
-                if (dict.TryGetValue(identifier, out var result))
+                if (dict.TryGetValue(identifier.Name, out var result))
                     return (T) result;
 
+                if (identifier.CaseSensitive)
+                {
+                    return default;
+                }
+
                 // slow: try match case-insensitive key, ideally the dictionary would be case insensitive but need some custom deserialization logic to support that
-                var entry = dict.FirstOrDefault(x => string.Equals(x.Key, identifier, StringComparison.OrdinalIgnoreCase));
+                var entry = dict.FirstOrDefault(x => string.Equals(x.Key, identifier.Name, StringComparison.OrdinalIgnoreCase));
                 return entry.Key != null ? (T) entry.Value : default;
             }
 
-            throw new NotImplementedException($"don't know how to get identifier ({identifier}) value from {obj?.GetType().FullName ?? "null"}");
+            throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
         }
 
         private T EvaluateQualified<T>(Expression.Qualified qualified, object obj)

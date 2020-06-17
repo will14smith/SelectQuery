@@ -1,5 +1,4 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 using OneOf.Types;
 using SelectParser.Queries;
 using Superpower;
@@ -10,7 +9,7 @@ namespace SelectParser
 {
     public class Parser
     {
-        private static readonly TokenListParser<SelectToken, string> Identifier =
+        private static readonly TokenListParser<SelectToken, (string Identifier, bool CaseSensitive)> Identifier =
             Token.EqualTo(SelectToken.Identifier)
                 .Select(ParseIdentifier);
 
@@ -28,15 +27,15 @@ namespace SelectParser
 
 
         private static readonly TokenListParser<SelectToken, string> Alias =
-            Token.Sequence(SelectToken.As, SelectToken.Identifier).Select(x => ParseIdentifier(x[1]))
-                .Or(Identifier);
+            Token.Sequence(SelectToken.As, SelectToken.Identifier).Select(x => ParseIdentifier(x[1]).Identifier)
+                .Or(Identifier.Select(x => x.Identifier));
 
         #region expression 
 
         private static readonly TokenListParser<SelectToken, Expression> QualifiedIdentifier =
             Identifier
-                .Or(Token.EqualTo(SelectToken.Star).Select(x => "*"))
-                .Select(x => new Expression.Identifier(x))
+                .Or(Token.EqualTo(SelectToken.Star).Select(x => ("*", false)))
+                .Select(x => new Expression.Identifier(x.Item1, x.Item2))
                 .AtLeastOnceDelimitedBy(Token.EqualTo(SelectToken.Dot))
                 .Select(BuildQualified);
         private static Expression BuildQualified(Expression.Identifier[] identifiers)
@@ -47,7 +46,7 @@ namespace SelectParser
             Expression result = identifiers[identifiers.Length - 1];
             for (var i = identifiers.Length - 2; i >= 0; i--)
             {
-                result = new Expression.Qualified(identifiers[i].Name, result);
+                result = new Expression.Qualified(identifiers[i], result);
             }
             return result;
         }
@@ -233,7 +232,7 @@ namespace SelectParser
         #region from
         public static readonly TokenListParser<SelectToken, FromClause> FromClause =
             from @from in Token.EqualTo(SelectToken.From)
-            from tableName in Identifier
+            from tableName in Identifier.Select(x => x.Identifier)
             from alias in Alias.Select(x => (Option<string>)x).OptionalOrDefault(new None())
             select new FromClause(tableName, alias);
         #endregion
@@ -275,13 +274,13 @@ namespace SelectParser
             from limit in LimitClause.Select(x => (Option<LimitClause>)x).OptionalOrDefault(new None())
             select new Query(@select, @from, @where, order, limit);
 
-        private static string ParseIdentifier(Token<SelectToken> token)
+        private static (string Identifier, bool CaseSensitive) ParseIdentifier(Token<SelectToken> token)
         {
             var rawValue = token.ToStringValue();
 
             return rawValue[0] == '\"'
-                ? rawValue.Substring(1, rawValue.Length - 2)
-                : rawValue.ToLower();
+                ? (rawValue.Substring(1, rawValue.Length - 2), true)
+                : (rawValue, false);
         }
 
         private static string ParseString(Token<SelectToken> token)
