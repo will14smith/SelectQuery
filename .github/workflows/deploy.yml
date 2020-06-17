@@ -26,4 +26,6 @@ jobs:
         dotnet pack SelectParser/SelectParser.csproj --configuration Release --no-build -o artifacts/ -p:PackageVersion=1.0.${{github.run_number}}
         dotnet pack SelectQuery.Evaluation/SelectQuery.Evaluation.csproj --configuration Release --no-build -o artifacts/ -p:PackageVersion=1.0.${{github.run_number}}
     - name: Push
-      run: dotnet nuget push artifacts/*.nupkg
+      run: |
+        dotnet nuget push ./artifacts/SelectParser.*.nupkg --skip-duplicate
+        dotnet nuget push ./artifacts/SelectQuery.Evaluation.*.nupkg --skip-duplicate
