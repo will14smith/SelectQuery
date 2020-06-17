@@ -1,4 +1,5 @@
-﻿using OneOf;
+﻿using System;
+using OneOf;
 using OneOf.Types;
 
 namespace SelectParser
@@ -13,5 +14,15 @@ namespace SelectParser
 
         public bool IsSome => IsT0;
         public bool IsNone => IsT1;
+
+        public Option<U> Select<U>(Func<T, U> mapFn)
+        {
+            return Match(val => new Option<U>(mapFn(val)), none => none);
+        }
+
+        public Option<U> SelectMany<U>(Func<T, Option<U>> mapFn)
+        {
+            return Match(mapFn, none => none);
+        }
     }
 }

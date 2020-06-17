@@ -41,18 +41,24 @@ namespace SelectQuery.Evaluation
 
         private void WriteColumns(ref JsonWriter writer, IReadOnlyList<Column> columns, object obj)
         {
+            var hasWritten = false;
             for (var index = 0; index < columns.Count; index++)
             {
-                if (index > 0)
+                if (hasWritten)
                 {
                     writer.WriteValueSeparator();
                 }
 
                 var column = columns[index];
-                var value = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+                var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
 
-                writer.WritePropertyName(GetColumnName(index, column));
-                Formatter.Serialize(ref writer, value, StandardResolver.Default);
+                if (result.IsSome)
+                {
+                    writer.WritePropertyName(GetColumnName(index, column));
+                    Formatter.Serialize(ref writer, result.AsT0, StandardResolver.Default);
+
+                    hasWritten = true;
+                }
             }
         }
 

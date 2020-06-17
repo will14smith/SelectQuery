@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using OneOf.Types;
+using SelectParser;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation
 {
     public class ExpressionEvaluator
     {
-        public T Evaluate<T>(Expression expression, object obj)
+        public Option<T> Evaluate<T>(Expression expression, object obj)
         {
             var value = expression.Match(
                 strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
@@ -24,7 +26,7 @@ namespace SelectQuery.Evaluation
             );
 
             // normalize result values, utf8json parses numbers are decimal but we want doubles
-            if (value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
+            if (value.Value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
             return value;
         }
 
@@ -43,7 +45,7 @@ namespace SelectQuery.Evaluation
             return boolLiteral.Value;
         }
 
-        private T EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
+        private Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
         {
             if (obj is null)
             {
@@ -58,29 +60,30 @@ namespace SelectQuery.Evaluation
 
                 if (identifier.CaseSensitive)
                 {
-                    return default;
+                    return new None();
                 }
 
                 // slow: try match case-insensitive key, ideally the dictionary would be case insensitive but need some custom deserialization logic to support that
                 var entry = dict.FirstOrDefault(x => string.Equals(x.Key, identifier.Name, StringComparison.OrdinalIgnoreCase));
-                return entry.Key != null ? (T) entry.Value : default;
+                return entry.Key != null ? (Option<T>) (T) entry.Value : new None();
             }
 
             throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
         }
 
-        private T EvaluateQualified<T>(Expression.Qualified qualified, object obj)
+        private Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
         {
             var target = EvaluateIdentifier<object>(qualified.Qualification, obj);
-            return Evaluate<T>(qualified.Expression, target);
+
+            return target.SelectMany(obj => Evaluate<T>(qualified.Expression, obj));
         }
 
-        private T EvaluateUnary<T>(Expression.Unary unary, object obj)
+        private Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)
         {
-            return (T) (object) (unary.Operator switch
+            return (unary.Operator switch
             {
-                UnaryOperator.Not => !Evaluate<bool>(unary.Expression, obj),
-                UnaryOperator.Negate => -Evaluate<decimal>(unary.Expression, obj),
+                UnaryOperator.Not => Evaluate<bool>(unary.Expression, obj).Select(value => (T) (object) !value),
+                UnaryOperator.Negate => Evaluate<decimal>(unary.Expression, obj).Select(value => (T) (object) -value),
 
                 _ => throw new ArgumentOutOfRangeException()
             });
@@ -88,16 +91,19 @@ namespace SelectQuery.Evaluation
 
         private T EvaluateBinary<T>(Expression.Binary binary, object obj)
         {
-            var left = Evaluate<object>(binary.Left, obj);
-            var right = Evaluate<object>(binary.Right, obj);
+            var leftOpt = Evaluate<object>(binary.Left, obj);
+            var rightOpt = Evaluate<object>(binary.Right, obj);
 
             if (binary.Operator == BinaryOperator.Add)
             {
-                return (T) EvaluateAddition(left, right);
+                return (T) EvaluateAddition(leftOpt, rightOpt);
             }
 
+            var left = leftOpt.Value;
+            var right = rightOpt.Value;
+
             // propagate nulls
-            if (left == null || right == null) return default;
+            if (leftOpt.IsNone || left == null || rightOpt.IsNone || right == null) return default;
 
             return (T) (object) (binary.Operator switch
             {
@@ -120,17 +126,17 @@ namespace SelectQuery.Evaluation
             });
         }
 
-        private object EvaluateAddition(object left, object right)
+        private object EvaluateAddition(Option<object> left, Option<object> right)
         {
-            if (left is decimal leftNum && right is decimal rightNum)
+            if (left.Value is decimal leftNum && right.Value is decimal rightNum)
             {
                 return leftNum + rightNum;
             }
 
-            if (left is null) return right?.ToString();
-            if (right is null) return null;
+            if (left.IsNone || left.Value is null) return right?.Value?.ToString();
+            if (right.IsNone || right.Value is null) return null;
 
-            return $"{left}{right}";
+            return $"{left.Value}{right.Value}";
         }
 
         private bool EvaluateEquality(object left, object right)
@@ -147,8 +153,7 @@ namespace SelectQuery.Evaluation
         {
             var value = Evaluate<object>(presence.Expression, obj);
 
-            // TODO this isn't strict presence...
-            var isMissing = value is null;
+            var isMissing = value.IsNone;
 
             return isMissing == presence.Negate;
         }
@@ -178,7 +183,7 @@ namespace SelectQuery.Evaluation
 
     public static class ExpressionEvaluatorExtensions
     {
-        public static T EvaluateOnTable<T>(this ExpressionEvaluator evaluator, Expression expression, FromClause from, object obj)
+        public static Option<T> EvaluateOnTable<T>(this ExpressionEvaluator evaluator, Expression expression, FromClause from, object obj)
         {
             var tableName = from.Alias.Match(alias => alias, _ => "s3object");
             var input = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
