@@ -1,0 +1,29 @@
+name: .NET Core
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    types: [ closed ]
+    branches: [ master ]
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.101
+        source-url: https://nuget.pkg.github.com/${github.repository_owner}/index.json
+    - name: Install dependencies
+      run: dotnet restore
+    - name: Build
+      run: dotnet build --configuration Release --no-restore
+    - name: Package
+      run: dotnet pack --configuration Release --no-build -o artifacts/
+    - name: Push
+      run: dotnet nuget push artifacts/*.nupkg
