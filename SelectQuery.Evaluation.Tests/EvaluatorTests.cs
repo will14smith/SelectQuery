@@ -30,6 +30,7 @@ namespace SelectQuery.Evaluation.Tests
 
         [InlineData("SELECT * FROM s3object", ProjectionRecord)]
         [InlineData("SELECT s.a FROM s3object s", @"{""a"":1}")]
+        [InlineData("SELECT s.x.a FROM s3object s", @"{""a"":null}")] // this is a deviation from the real service, but _should_ have the same effect to consumers
         [InlineData("SELECT s.a as b FROM s3object s", @"{""b"":1}")]
         [InlineData("SELECT s.a, s.c FROM s3object s", @"{""a"":1,""c"":[1,2,3]}")]
         [InlineData("SELECT s.a as b, s.b as a FROM s3object s", @"{""b"":1,""a"":2}")]

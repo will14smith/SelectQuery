@@ -48,6 +48,11 @@ namespace SelectQuery.Evaluation
 
         private T EvaluateIdentifier<T>(string identifier, object obj)
         {
+            if (obj is null)
+            {
+                return default;
+            }
+
             if (obj is IReadOnlyDictionary<string, object> dict)
             {
                 // TODO handle casing?
