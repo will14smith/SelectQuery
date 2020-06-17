@@ -44,21 +44,22 @@ namespace SelectQuery.Evaluation
             var hasWritten = false;
             for (var index = 0; index < columns.Count; index++)
             {
+                var column = columns[index];
+
+                var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+                if (!result.IsSome)
+                {
+                    continue;
+                }
+
                 if (hasWritten)
                 {
                     writer.WriteValueSeparator();
                 }
+                hasWritten = true;
 
-                var column = columns[index];
-                var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
-
-                if (result.IsSome)
-                {
-                    writer.WritePropertyName(GetColumnName(index, column));
-                    Formatter.Serialize(ref writer, result.AsT0, StandardResolver.Default);
-
-                    hasWritten = true;
-                }
+                writer.WritePropertyName(GetColumnName(index, column));
+                Formatter.Serialize(ref writer, result.AsT0, StandardResolver.Default);
             }
         }
 
