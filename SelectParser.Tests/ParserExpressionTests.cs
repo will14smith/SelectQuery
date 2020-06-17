@@ -255,6 +255,48 @@ namespace SelectParser.Tests
 
         #endregion
 
+        #region Presence
+
+        [Fact]
+        public void ParsingPresence()
+        {
+            var input = "test IS NOT MISSING";
+
+            var result = Parse(Parser.Presence, input);
+
+            var expression = AssertSuccess(result);
+            var presence = Assert.IsType<Expression.Presence>(expression);
+            var identifier = Assert.IsType<Expression.Identifier>(presence.Expression);
+            Assert.Equal("test", identifier.Name);
+            Assert.False(presence.Negate);
+        }
+
+        [Fact]
+        public void ParsingNotPresence()
+        {
+            var input = "test IS MISSING";
+
+            var result = Parse(Parser.Presence, input);
+
+            var expression = AssertSuccess(result);
+            var presence = Assert.IsType<Expression.Presence>(expression);
+            Assert.True(presence.Negate);
+        }
+
+        [Fact]
+        public void ParsingNopPresence()
+        {
+            var input = "test";
+
+            var result = Parse(Parser.Presence, input);
+
+            var select = AssertSuccess(result);
+            var identifier = Assert.IsType<Expression.Identifier>(select);
+            Assert.Equal("test", identifier.Name);
+        }
+
+        #endregion
+
         #region Membership
 
         [Fact]

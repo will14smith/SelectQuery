@@ -18,6 +18,7 @@ namespace SelectQuery.Evaluation
                 unary => EvaluateUnary<T>(unary, obj),
                 binary => EvaluateBinary<T>(binary, obj),
                 between => (T)(object)EvaluateBetween(between, obj),
+                presence => (T)(object)EvaluatePresence(presence, obj),
                 inExpr => (T)(object)EvaluateIn(inExpr, obj),
                 like => (T)(object)EvaluateLike(like, obj)
             );
@@ -140,6 +141,16 @@ namespace SelectQuery.Evaluation
         private bool EvaluateBetween(Expression.Between between, object obj)
         {
             throw new NotImplementedException();
+        }
+
+        private bool EvaluatePresence(Expression.Presence presence, object obj)
+        {
+            var value = Evaluate<object>(presence.Expression, obj);
+
+            // TODO this isn't strict presence...
+            var isMissing = value is null;
+
+            return isMissing == presence.Negate;
         }
 
         private bool EvaluateIn(Expression.In inExpr, object obj)

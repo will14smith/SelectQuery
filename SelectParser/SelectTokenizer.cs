@@ -20,6 +20,8 @@ namespace SelectParser
             { "OFFSET", SelectToken.Offset },
             { "ASC", SelectToken.Asc },
             { "DESC", SelectToken.Desc },
+            { "IS", SelectToken.Is },
+            { "MISSING", SelectToken.Missing },
 
             { "TRUE", SelectToken.BooleanLiteral },
             { "FALSE", SelectToken.BooleanLiteral },

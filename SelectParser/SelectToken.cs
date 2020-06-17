@@ -19,6 +19,8 @@
         Offset,
         Asc,
         Desc,
+        Is,
+        Missing,
         // operators
         Dot,
         Comma,

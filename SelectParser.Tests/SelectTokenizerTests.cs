@@ -16,6 +16,8 @@ namespace SelectParser.Tests
         [InlineData("OFFSET", SelectToken.Offset)]
         [InlineData("ASC", SelectToken.Asc)]
         [InlineData("DESC", SelectToken.Desc)]
+        [InlineData("IS", SelectToken.Is)]
+        [InlineData("MISSING", SelectToken.Missing)]
         [InlineData("select", SelectToken.Select)]
         public void TestKeywordsAreParsedCorrectly(string input, SelectToken expected)
         {
