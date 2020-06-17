@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation
@@ -55,8 +56,13 @@ namespace SelectQuery.Evaluation
 
             if (obj is IReadOnlyDictionary<string, object> dict)
             {
-                // TODO handle casing?
-                return dict.TryGetValue(identifier, out var result) ? (T) result : default;
+                // fast: match exact key
+                if (dict.TryGetValue(identifier, out var result))
+                    return (T) result;
+
+                // slow: try match case-insensitive key, ideally the dictionary would be case insensitive but need some custom deserialization logic to support that
+                var entry = dict.FirstOrDefault(x => string.Equals(x.Key, identifier, StringComparison.OrdinalIgnoreCase));
+                return entry.Key != null ? (T) entry.Value : default;
             }
 
             throw new NotImplementedException($"don't know how to get identifier ({identifier}) value from {obj?.GetType().FullName ?? "null"}");
