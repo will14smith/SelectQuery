@@ -1,21 +1,21 @@
-﻿using System.Collections.Generic;
-using SelectParser;
+﻿using SelectParser;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation.Slots
 {
     internal class SlottedQuery
     {
-        public SlottedQuery(SelectClause slottedSelect, Option<Expression> slottedPredicate, IReadOnlyList<Expression> slotExpressions)
+        public SlottedQuery(SelectClause slottedSelect, Option<Expression> slottedPredicate, SlottedExpressionTree slotTree, int numberOfSlots)
         {
             SlottedSelect = slottedSelect;
             SlottedPredicate = slottedPredicate;
-            SlotExpressions = slotExpressions;
+            SlotTree = slotTree;
+            NumberOfSlots = numberOfSlots;
         }
 
         public SelectClause SlottedSelect { get; }
         public Option<Expression> SlottedPredicate { get; }
-        
-        public IReadOnlyList<Expression> SlotExpressions { get; }
+        public SlottedExpressionTree SlotTree { get; }
+        public int NumberOfSlots { get; }
     }
 }

@@ -9,8 +9,6 @@ namespace SelectQuery.Evaluation
 {
     public class JsonLinesEvaluatorNew
     {
-        private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-
         private readonly SlottedQuery _query;
 
         public JsonLinesEvaluatorNew(Query query)
@@ -22,7 +20,6 @@ namespace SelectQuery.Evaluation
 
         public byte[] Run(byte[] file)
         {
-
             var reader = new JsonReader(file);
             var writer = new JsonWriter();
 
@@ -66,10 +63,8 @@ namespace SelectQuery.Evaluation
             {
                 return false;
             }
-
-            var obj = Formatter.Deserialize(ref reader, StandardResolver.Default);
-
-            var eval = SlottedQueryEvaluator.Evaluate(_query, obj);
+            
+            var eval = SlottedQueryEvaluator.Evaluate(_query, ref reader);
             if (!SlottedQueryEvaluator.EvaluatePredicate(_query, eval))
             {
                 return true;

@@ -2,24 +2,18 @@
 using SelectParser;
 using SelectParser.Queries;
 using Utf8Json;
-using Utf8Json.Resolvers;
 
 namespace SelectQuery.Evaluation.Slots
 {
     internal class SlottedQueryEvaluator
     {
-        private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-
-        public static SlottedQueryEvaluation Evaluate(SlottedQuery query, object data)
+        public static SlottedQueryEvaluation Evaluate(SlottedQuery query, ref JsonReader reader)
         {
-            var slots = new SlottedQueryEvaluation.Slot[query.SlotExpressions.Count];
+            var slottedReader = new SlottedQueryReader(query);
 
-            for (var index = 0; index < query.SlotExpressions.Count; index++)
-            {
-                slots[index] = EvaluateSlot(query.SlotExpressions[index], data);
-            }
-
-            return new SlottedQueryEvaluation(slots);
+            slottedReader.Read(ref reader);
+            
+            return new SlottedQueryEvaluation(slottedReader.Slots);
         }
 
         private static SlottedQueryEvaluation.Slot EvaluateSlot(Expression expression, object data)
@@ -48,7 +42,7 @@ namespace SelectQuery.Evaluation.Slots
         {
             if (query.SlottedSelect is SlottedQueryBuilder.StarSlot star)
             {
-                Formatter.Serialize(ref writer, evaluation.Slots[star.Slotted.Index].Value, StandardResolver.Default);
+                SlottedQueryWriter.Write(ref writer, evaluation.Slots[star.Slotted.Index].Value);
             }
             else
             {
@@ -72,7 +66,7 @@ namespace SelectQuery.Evaluation.Slots
                     hasWritten = true;
 
                     writer.WritePropertyName(column.Alias.AsT0);
-                    Formatter.Serialize(ref writer, result.AsT0, StandardResolver.Default);
+                    SlottedQueryWriter.Write(ref writer, result.AsT0);
                 }
 
                 writer.WriteEndObject();

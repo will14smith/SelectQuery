@@ -16,7 +16,7 @@ namespace SelectQuery.Evaluation.Slots
             var select = queryBuilder.BuildSelect(query.Select);
             var predicate = queryBuilder.BuildPredicate(query.Where);
             
-            return new SlottedQuery(select, predicate, slotBuilder.Slots);
+            return new SlottedQuery(select, predicate, slotBuilder.SlotTree, slotBuilder.NumberOfSlots);
         }
 
         private readonly SlottedExpressionsBuilder _slotBuilder;
