@@ -25,6 +25,8 @@ ProjectSection(SolutionItems) = preProject
 	.github\workflows\deploy.yml = .github\workflows\deploy.yml
 EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SelectQuery.Benchmark", "SelectQuery.Benchmark\SelectQuery.Benchmark.csproj", "{0C802846-A7BC-4639-A57B-D004A71525BD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{B8650321-BEE1-4A88-BC9C-0D6F96A850E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B8650321-BEE1-4A88-BC9C-0D6F96A850E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B8650321-BEE1-4A88-BC9C-0D6F96A850E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0C802846-A7BC-4639-A57B-D004A71525BD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0C802846-A7BC-4639-A57B-D004A71525BD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0C802846-A7BC-4639-A57B-D004A71525BD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0C802846-A7BC-4639-A57B-D004A71525BD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
