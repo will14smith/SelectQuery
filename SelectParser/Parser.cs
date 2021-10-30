@@ -38,17 +38,13 @@ namespace SelectParser
                 .Select(x => new Expression.Identifier(x.Item1, x.Item2))
                 .AtLeastOnceDelimitedBy(Token.EqualTo(SelectToken.Dot))
                 .Select(BuildQualified);
+        
         private static Expression BuildQualified(Expression.Identifier[] identifiers)
         {
             if (identifiers.Length == 0) return null;
             if (identifiers.Length == 1) return identifiers[0];
 
-            Expression result = identifiers[identifiers.Length - 1];
-            for (var i = identifiers.Length - 2; i >= 0; i--)
-            {
-                result = new Expression.Qualified(identifiers[i], result);
-            }
-            return result;
+            return new Expression.Qualified(identifiers);
         }
 
         public static readonly TokenListParser<SelectToken, Expression> Term =

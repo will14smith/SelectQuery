@@ -9,11 +9,10 @@ namespace SelectQuery.Evaluation
     public class JsonLinesEvaluator
     {
         private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-        private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
 
         private readonly Query _query;
         private readonly JsonRecordWriter _recordWriter;
-
+        
         public JsonLinesEvaluator(Query query)
         {
             ValidateQuery(query);
@@ -24,7 +23,6 @@ namespace SelectQuery.Evaluation
 
         public byte[] Run(byte[] file)
         {
-
             var reader = new JsonReader(file);
             var writer = new JsonWriter();
 
@@ -55,12 +53,10 @@ namespace SelectQuery.Evaluation
 
         private static bool IsQualifiedStar(Expression expr)
         {
-            while (true)
-            {
-                if (expr.IsT3) return expr.AsT3.Name == "*";
-                if (!expr.IsT4) return false;
-                expr = expr.AsT4.Expression;
-            }
+            if (expr.IsT3) return expr.AsT3.Name == "*";
+            if (expr.IsT4) return expr.AsT4.LastIdentifier.Name == "*";
+
+            return false;
         }
 
         private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer)
@@ -72,14 +68,13 @@ namespace SelectQuery.Evaluation
             }
 
             var obj = Formatter.Deserialize(ref reader, StandardResolver.Default);
-
-            var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, obj), _ => true);
+            var wherePassed = _query.Where.Match(where => ExpressionEvaluatorExtensions.EvaluateOnTable<bool>(where.Condition, _query.From, obj), _ => true);
             if (wherePassed.IsSome && wherePassed.AsT0)
             {
                 _recordWriter.Write(ref writer, obj);
                 writer.WriteRaw((byte) '\n');
             }
-
+            
             return true;
         }
     }

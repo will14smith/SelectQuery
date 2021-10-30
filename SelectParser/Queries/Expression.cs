@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using OneOf;
 
@@ -145,18 +144,22 @@ namespace SelectParser.Queries
         }
         public class Qualified : Expression
         {
-            public Qualified(Identifier qualification, Expression expression)
+            public Qualified(params Identifier[] identifiers)
             {
-                Qualification = qualification;
-                Expression = expression;
+                Identifiers = identifiers;
+            }
+            
+            public Qualified(IReadOnlyList<Identifier> identifiers)
+            {
+                Identifiers = identifiers;
             }
 
-            public Identifier Qualification { get; }
-            public Expression Expression { get; }
+            public IReadOnlyList<Identifier> Identifiers { get; }
+            public Identifier LastIdentifier => Identifiers[Identifiers.Count - 1];
 
             protected bool Equals(Qualified other)
             {
-                return Equals(Qualification, other.Qualification) && Equals(Expression, other.Expression);
+                return Identifiers.SequenceEqual(other.Identifiers);
             }
 
             public override bool Equals(object obj)
@@ -168,13 +171,13 @@ namespace SelectParser.Queries
             {
                 unchecked
                 {
-                    return ((Qualification?.GetHashCode() ?? 0) * 397) ^ (Expression?.GetHashCode() ?? 0);
+                    return Identifiers.Aggregate(0, (acc, x) => x.GetHashCode() ^ (acc * 397));
                 }
             }
 
             public override string ToString()
             {
-                return $"{Qualification}.{Expression}";
+                return string.Join(".", Identifiers);
             }
         }
 

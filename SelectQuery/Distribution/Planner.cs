@@ -128,20 +128,17 @@ namespace SelectQuery.Distribution
 
             private static bool TryGetColumnName(Expression expression, out string name)
             {
-                while (true)
+                switch (expression)
                 {
-                    switch (expression)
-                    {
-                        case Expression.Identifier identifier:
-                            name = identifier.Name;
-                            return true;
-                        case Expression.Qualified qualified:
-                            expression = qualified.Expression;
-                            continue;
-                        default:
-                            name = default;
-                            return false;
-                    }
+                    case Expression.Identifier identifier:
+                        name = identifier.Name;
+                        return true;
+                    case Expression.Qualified qualified:
+                        name = qualified.LastIdentifier.Name;
+                        return true;
+                    default:
+                        name = default;
+                        return false;
                 }
             }
         }

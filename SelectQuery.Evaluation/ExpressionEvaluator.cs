@@ -9,7 +9,7 @@ namespace SelectQuery.Evaluation
 {
     public class ExpressionEvaluator
     {
-        public Option<T> Evaluate<T>(Expression expression, object obj)
+        public static Option<T> Evaluate<T>(Expression expression, object obj)
         {
             var value = expression.Match(
                 strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
@@ -30,22 +30,22 @@ namespace SelectQuery.Evaluation
             return value;
         }
 
-        private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
+        private static string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
         {
             return strLiteral.Value;
         }
 
-        private decimal EvaluateNumberLiteral(Expression.NumberLiteral numLiteral)
+        private static decimal EvaluateNumberLiteral(Expression.NumberLiteral numLiteral)
         {
             return numLiteral.Value;
         }
 
-        private bool EvaluateBooleanLiteral(Expression.BooleanLiteral boolLiteral)
+        private static bool EvaluateBooleanLiteral(Expression.BooleanLiteral boolLiteral)
         {
             return boolLiteral.Value;
         }
 
-        private Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
+        private static Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
         {
             if (obj is null)
             {
@@ -71,14 +71,19 @@ namespace SelectQuery.Evaluation
             throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
         }
 
-        private Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
+        private static Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
         {
-            var target = EvaluateIdentifier<object>(qualified.Qualification, obj);
-
-            return target.SelectMany(obj => Evaluate<T>(qualified.Expression, obj));
+            Option<object> result = obj;
+            
+            foreach (var identifier in qualified.Identifiers)
+            {
+                result = result.SelectMany(x => Evaluate<object>(identifier, x));
+            }
+            
+            return result.Select(x => (T)x);
         }
 
-        private Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)
+        private static Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)
         {
             return (unary.Operator switch
             {
@@ -89,7 +94,7 @@ namespace SelectQuery.Evaluation
             });
         }
 
-        private T EvaluateBinary<T>(Expression.Binary binary, object obj)
+        private static T EvaluateBinary<T>(Expression.Binary binary, object obj)
         {
             var leftOpt = Evaluate<object>(binary.Left, obj);
             var rightOpt = Evaluate<object>(binary.Right, obj);
@@ -126,7 +131,7 @@ namespace SelectQuery.Evaluation
             });
         }
 
-        private object EvaluateAddition(Option<object> left, Option<object> right)
+        private static object EvaluateAddition(Option<object> left, Option<object> right)
         {
             if (left.Value is decimal leftNum && right.Value is decimal rightNum)
             {
@@ -139,17 +144,17 @@ namespace SelectQuery.Evaluation
             return $"{left.Value}{right.Value}";
         }
 
-        private bool EvaluateEquality(object left, object right)
+        private static bool EvaluateEquality(object left, object right)
         {
             return Equals(left, right);
         }
 
-        private bool EvaluateBetween(Expression.Between between, object obj)
+        private static bool EvaluateBetween(Expression.Between between, object obj)
         {
             throw new NotImplementedException();
         }
 
-        private bool EvaluatePresence(Expression.Presence presence, object obj)
+        private static bool EvaluatePresence(Expression.Presence presence, object obj)
         {
             var value = Evaluate<object>(presence.Expression, obj);
 
@@ -158,7 +163,7 @@ namespace SelectQuery.Evaluation
             return isMissing == presence.Negate;
         }
 
-        private bool EvaluateIn(Expression.In inExpr, object obj)
+        private static bool EvaluateIn(Expression.In inExpr, object obj)
         {
             var value = Evaluate<object>(inExpr.Expression, obj);
 
@@ -175,7 +180,7 @@ namespace SelectQuery.Evaluation
             return false;
         }
 
-        private bool EvaluateLike(Expression.Like like, object obj)
+        private static bool EvaluateLike(Expression.Like like, object obj)
         {
             throw new NotImplementedException();
         }
@@ -183,7 +188,7 @@ namespace SelectQuery.Evaluation
 
     public static class ExpressionEvaluatorExtensions
     {
-        public static Option<T> EvaluateOnTable<T>(this ExpressionEvaluator evaluator, Expression expression, FromClause from, object obj)
+        public static Option<T> EvaluateOnTable<T>(Expression expression, FromClause from, object obj)
         {
             var tableName = from.Alias.Match(alias => alias, _ => "s3object");
             var input = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
@@ -191,7 +196,7 @@ namespace SelectQuery.Evaluation
                 { tableName, obj }
             };
 
-            return evaluator.Evaluate<T>(expression, input);
+            return ExpressionEvaluator.Evaluate<T>(expression, input);
         }
     }
 }

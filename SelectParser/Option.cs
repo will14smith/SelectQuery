@@ -4,6 +4,12 @@ using OneOf.Types;
 
 namespace SelectParser
 {
+    public static class Option
+    {
+        public static Option<T> Some<T>(T value) => value;
+        public static readonly None None = new None();
+    }
+    
     public class Option<T> : OneOfBase<T, None>
     {
         private Option() : base(1) { }

@@ -46,7 +46,7 @@ namespace SelectQuery.Evaluation
             {
                 var column = columns[index];
 
-                var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+                var result = ExpressionEvaluatorExtensions.EvaluateOnTable<object>(column.Expression, _from, obj);
                 if (!result.IsSome)
                 {
                     continue;
@@ -76,23 +76,20 @@ namespace SelectQuery.Evaluation
 
         private static string GetColumnName(int index, Expression expression)
         {
-            while (true)
+            if (expression.IsT3)
             {
-                if (expression.IsT3)
-                {
-                    // use the identifier name
-                    return expression.AsT3.Name;
-                }
-
-                if (!expression.IsT4)
-                {
-                    // default is _N for the Nth column (1 indexed)
-                    return $"_{index + 1}";
-                }
-
-                // recurse down qualified expressions
-                expression = expression.AsT4.Expression;
+                // use the identifier name
+                return expression.AsT3.Name;
             }
+
+            if (expression.IsT4)
+            {
+                // use the last identifier when qualified
+                return expression.AsT4.LastIdentifier.Name;
+            }
+
+            // default is _N for the Nth column (1 indexed)
+            return $"_{index + 1}";
         }
     }
 }

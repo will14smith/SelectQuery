@@ -501,8 +501,8 @@ namespace SelectParser.Tests
 
             var expression = AssertSuccess(result);
             var qualified = Assert.IsType<Expression.Qualified>(expression);
-            Assert.Equal("a", qualified.Qualification.Name);
-            AssertIdentifier("b", qualified.Expression);
+            AssertIdentifier("a", qualified.Identifiers[0]);
+            AssertIdentifier("b", qualified.Identifiers[1]);
         }
         [Fact]
         public void ParsingQuotedQualified()
@@ -513,9 +513,9 @@ namespace SelectParser.Tests
 
             var expression = AssertSuccess(result);
             var qualified = Assert.IsType<Expression.Qualified>(expression);
-            Assert.Equal("a", qualified.Qualification.Name);
-            Assert.True(qualified.Qualification.CaseSensitive);
-            AssertIdentifier("b", qualified.Expression);
+            Assert.Equal("a", qualified.Identifiers[0].Name);
+            Assert.True(qualified.Identifiers[0].CaseSensitive);
+            AssertIdentifier("b", qualified.Identifiers[1]);
         }
         [Fact]
         public void ParsingQualifiedStar()
@@ -526,8 +526,8 @@ namespace SelectParser.Tests
 
             var expression = AssertSuccess(result);
             var qualified = Assert.IsType<Expression.Qualified>(expression);
-            Assert.Equal("a", qualified.Qualification.Name);
-            AssertIdentifier("*", qualified.Expression);
+            Assert.Equal("a", qualified.Identifiers[0].Name);
+            AssertIdentifier("*", qualified.Identifiers[1]);
         }
         [Fact]
         public void ParsingNumberLiteral()
