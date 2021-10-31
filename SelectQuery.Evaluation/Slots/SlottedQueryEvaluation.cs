@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace SelectQuery.Evaluation.Slots
 {
@@ -11,14 +12,27 @@ namespace SelectQuery.Evaluation.Slots
 
         public IReadOnlyList<Slot> Slots { get; }
 
-        public class Slot
+        public abstract class Slot
         {
-            public Slot(object value)
+            public class ValueSlot : Slot
             {
-                Value = value;
-            }
+                public object Value { get; }
 
-            public object Value { get; }
+                public ValueSlot(object value)
+                {
+                    Value = value;
+                }
+            }          
+            
+            public class SpanSlot : Slot
+            {
+                public ArraySegment<byte> Buffer { get; }
+
+                public SpanSlot(ArraySegment<byte> buffer)
+                {
+                    Buffer = buffer;
+                }
+            }
         }
     }
 }

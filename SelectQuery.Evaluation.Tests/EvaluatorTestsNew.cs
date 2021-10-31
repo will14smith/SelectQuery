@@ -50,7 +50,7 @@ namespace SelectQuery.Evaluation.Tests
         [Theory]
 
         [InlineData("SELECT 1 FROM s3object WHERE s3object.a = 1", new [] { @"{""a"":1}" }, 1)]
-        [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1", new [] { @"{""a"":1}" }, 1)]
+        [InlineData("SELECT * FROM s3object s WHERE s.a = 1", new [] { @"{""a"":1}" }, 1)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a = 2", new [] { @"{""a"":1}" }, 0)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 1)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1 and s.a < 3", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 1)]

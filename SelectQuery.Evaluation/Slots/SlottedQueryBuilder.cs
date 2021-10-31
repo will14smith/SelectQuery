@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -33,7 +32,7 @@ namespace SelectQuery.Evaluation.Slots
 
         private SelectClause BuildSelectStar(SelectClause.Star select)
         {
-            var slot = (SlottedExpression) _slotBuilder.Build(new Expression.Identifier("*", false));
+            var slot = (SlottedExpression) _slotBuilder.Build(new Expression.Identifier("*", false), true);
             return new StarSlot(slot);
         }
 
@@ -57,7 +56,7 @@ namespace SelectQuery.Evaluation.Slots
             {
                 var column = select.Columns[index];
 
-                var expr = _slotBuilder.Build(column.Expression);
+                var expr = _slotBuilder.Build(column.Expression, true);
                 slotColumns.Add(new Column(expr, GetColumnName(index, column)));
             }
 
@@ -100,7 +99,7 @@ namespace SelectQuery.Evaluation.Slots
                 return new None();
             }
             
-            return _slotBuilder.Build(where.AsT0.Condition);
+            return _slotBuilder.Build(where.AsT0.Condition, false);
         }
     }
 }

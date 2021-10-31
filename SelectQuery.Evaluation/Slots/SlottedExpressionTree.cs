@@ -11,11 +11,13 @@ namespace SelectQuery.Evaluation.Slots
     {
         public IReadOnlyDictionary<string, SlottedExpressionTree> Children { get; }
         public Option<int> Slot { get; }
+        public bool Passthrough { get; }
 
-        private SlottedExpressionTree(IReadOnlyDictionary<string, SlottedExpressionTree> children, Option<int> slot)
+        private SlottedExpressionTree(IReadOnlyDictionary<string, SlottedExpressionTree> children, Option<int> slot, bool passthrough)
         {
             Children = children;
             Slot = slot;
+            Passthrough = passthrough;
         }
         
         public class Builder
@@ -62,8 +64,9 @@ namespace SelectQuery.Evaluation.Slots
         {
             public Dictionary<string, BuilderNode> Children { get; } = new();
             public Option<int> Slot { get; set; } = Option.None;
+            public bool Passthrough { get; set; } = true;
 
-            public SlottedExpressionTree Build() => new SlottedExpressionTree(Children.ToDictionary(x => x.Key, x => x.Value.Build()), Slot);
+            public SlottedExpressionTree Build() => new SlottedExpressionTree(Children.ToDictionary(x => x.Key, x => x.Value.Build()), Slot, Passthrough);
         }
     }
 }

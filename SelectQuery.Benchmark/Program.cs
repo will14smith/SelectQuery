@@ -11,7 +11,7 @@ namespace SelectQuery.Benchmark
     [MemoryDiagnoser]
     public class OldVsNew
     {
-        [Params(@"SELECT s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"SELECT 1 FROM s3object s WHERE s.a = 1 and s.a < 3")]
+        [Params(@"SELECT s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"SELECT * FROM s3object s WHERE s.a = 1 and s.a < 3")]
         public string Query;
 
         [Params(1, 2000)] 

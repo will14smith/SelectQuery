@@ -26,8 +26,11 @@ namespace SelectQuery.Evaluation.Slots
 
         private object ReadNode(ref JsonReader reader, SlottedExpressionTree node, bool needValue)
         {
-            // if node is a slot, capture whole object to output
+            // if node is a non-passthrough slot, capture whole object to output
+            // if node is a passthrough slot, capture offsets to object
             // if not, read/skip as needed and recurse into children
+
+            int startOffset = reader.GetCurrentOffsetUnsafe();
 
             if (node != null)
             {
@@ -37,8 +40,9 @@ namespace SelectQuery.Evaluation.Slots
                     return null;
                 }
 
-                needValue |= node.Slot.IsSome;
+                needValue |= node.Slot.IsSome && !node.Passthrough;
             }
+
 
             var token = reader.GetCurrentJsonToken();
             var value = token switch
@@ -55,7 +59,15 @@ namespace SelectQuery.Evaluation.Slots
 
             if (node != null && node.Slot.IsSome)
             {
-                _slots[node.Slot.AsT0] = new SlottedQueryEvaluation.Slot(value);
+                if (node.Passthrough)
+                {
+                    var buffer = new ArraySegment<byte>(reader.GetBufferUnsafe(), startOffset, checked(reader.GetCurrentOffsetUnsafe() - startOffset));
+                    _slots[node.Slot.AsT0] = new SlottedQueryEvaluation.Slot.SpanSlot(buffer);
+                }
+                else
+                {
+                    _slots[node.Slot.AsT0] = new SlottedQueryEvaluation.Slot.ValueSlot(value);
+                }
             }
             
             return value;

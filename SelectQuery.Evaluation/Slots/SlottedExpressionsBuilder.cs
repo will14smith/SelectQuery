@@ -17,10 +17,10 @@ namespace SelectQuery.Evaluation.Slots
             _tableAlias = GetTableAlias(from);
         }
         
-        public Expression Build(Expression expr)
+        public Expression Build(Expression expr, bool passthrough)
         {
-            if (expr is Expression.Identifier identifier) return BuildQualified(new Expression.Qualified(identifier));
-            if (expr is Expression.Qualified qualified) return BuildQualified(qualified);
+            if (expr is Expression.Identifier identifier) return BuildQualified(new Expression.Qualified(identifier), passthrough);
+            if (expr is Expression.Qualified qualified) return BuildQualified(qualified, passthrough);
 
             if (expr is Expression.Binary binary) return BuildBinary(binary);
             if (expr is Expression.Presence presence) return BuildPresence(presence);
@@ -31,13 +31,11 @@ namespace SelectQuery.Evaluation.Slots
             throw new NotImplementedException($"handle complex expressions: {expr.GetType().FullName}");
         }
         
-        private Expression BuildQualified(Expression.Qualified qualified)
+        private Expression BuildQualified(Expression.Qualified qualified, bool passthrough)
         {
-            // TODO handle de-duplication
-
             if (qualified.Identifiers.Count == 1 && qualified.Identifiers[0].Name == "*")
             {
-                return new SlottedExpression(AllocateSlot(_slotTree.Root));
+                return new SlottedExpression(AllocateSlot(_slotTree.Root, passthrough));
             }
 
             if (!IsTableIdentifier(qualified.Identifiers[0]))
@@ -46,11 +44,13 @@ namespace SelectQuery.Evaluation.Slots
             }
 
             var node = _slotTree.FindOrCreate(new Expression.Qualified(qualified.Identifiers.Skip(1).ToArray()));
-            return new SlottedExpression(AllocateSlot(node));
+            return new SlottedExpression(AllocateSlot(node, passthrough));
         }
 
-        private int AllocateSlot(SlottedExpressionTree.BuilderNode node)
+        private int AllocateSlot(SlottedExpressionTree.BuilderNode node, bool passthrough)
         {
+            node.Passthrough &= passthrough;
+            
             if (node.Slot.IsSome)
             {
                 return node.Slot.AsT0;
@@ -62,19 +62,19 @@ namespace SelectQuery.Evaluation.Slots
         }
 
         private Expression BuildBinary(Expression.Binary binary) => 
-            new Expression.Binary(binary.Operator, Build(binary.Left), Build(binary.Right));
+            new Expression.Binary(binary.Operator, Build(binary.Left, false), Build(binary.Right, false));
 
         private Expression BuildPresence(Expression.Presence presence)
         {
-            var expr = Build(presence.Expression);
+            var expr = Build(presence.Expression, false);
 
             return new Expression.Presence(expr, presence.Negate);
         }
         
         private Expression BuildIn(Expression.In @in)
         {
-            var expr = Build(@in.Expression);
-            var matches = @in.Matches.Select(Build).ToArray();
+            var expr = Build(@in.Expression, false);
+            var matches = @in.Matches.Select(x => Build(x, false)).ToArray();
             
             return new Expression.In(expr, matches);
         }

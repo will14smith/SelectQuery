@@ -8,7 +8,28 @@ namespace SelectQuery.Evaluation.Slots
 {
     internal static class SlottedQueryWriter
     {
-        public static void Write(ref JsonWriter writer, object value)
+        public static void Write(ref JsonWriter writer, SlottedQueryEvaluation.Slot value)
+        {
+            switch (value)
+            {
+                case SlottedQueryEvaluation.Slot.SpanSlot spanSlot: WriteSpan(ref writer, spanSlot.Buffer); break;
+                case SlottedQueryEvaluation.Slot.ValueSlot valueSlot: WriteValue(ref writer, valueSlot.Value); break;
+                
+                default: throw new ArgumentOutOfRangeException(nameof(value));
+            }
+        }
+
+        private static void WriteSpan(ref JsonWriter writer, ArraySegment<byte> buffer)
+        {
+            writer.EnsureCapacity(buffer.Count);
+
+            var target = writer.GetBuffer();
+            Array.Copy(buffer.Array, buffer.Offset, target.Array, writer.CurrentOffset, buffer.Count);
+
+            writer.AdvanceOffset(buffer.Count);
+        }
+
+        private static void WriteValue(ref JsonWriter writer, object value)
         {
             switch (value)
             {
@@ -43,7 +64,7 @@ namespace SelectQuery.Evaluation.Slots
                 }
                 
                 writer.WritePropertyName(entry.Key);
-                Write(ref writer, entry.Value);
+                WriteValue(ref writer, entry.Value);
             }
             
             writer.WriteEndObject();
@@ -66,7 +87,7 @@ namespace SelectQuery.Evaluation.Slots
                     writer.WriteValueSeparator();
                 }
                 
-                Write(ref writer, entry);
+                WriteValue(ref writer, entry);
             }
             
             writer.WriteEndArray();
