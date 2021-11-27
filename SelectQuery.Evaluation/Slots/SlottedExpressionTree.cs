@@ -25,17 +25,17 @@ namespace SelectQuery.Evaluation.Slots
             Passthrough = passthrough;
         }
 
-        public SlottedExpressionTree[] GetChildren(string name)
+        public (SlottedExpressionTree, SlottedExpressionTree) GetChildren(string name)
         {
             var a = _caseSensitiveChildren.TryGetValue(name, out var v1);
             var b = _caseInsensitiveChildren.TryGetValue(name, out var v2);
 
             return (a, b) switch
             {
-                (true, true) => new[] { v1, v2 },
-                (true, false) => new[] { v1 },
-                (false, true) => new[] { v2 },
-                (false, false) => Array.Empty<SlottedExpressionTree>(),
+                (true, true) => (v1, v2),
+                (true, false) => (v1, null),
+                (false, true) => (v2, null),
+                (false, false) => (null, null),
             };
         }
 
@@ -104,6 +104,21 @@ namespace SelectQuery.Evaluation.Slots
 
     internal static class SlottedExpressionTreeExtensions
     {
-        public static IReadOnlyCollection<SlottedExpressionTree> GetChildren(this IReadOnlyCollection<SlottedExpressionTree> nodes, string name) => nodes.SelectMany(node => node.GetChildren(name)).ToArray();
+        public static PooledList<SlottedExpressionTree> GetChildren(this PooledList<SlottedExpressionTree> nodes, string name)
+        {
+            var children = new PooledList<SlottedExpressionTree>(nodes.Count * 2);
+
+            for (var index = 0; index < nodes.Count; index++)
+            {
+                var node = nodes[index];
+                var (a, b) = node.GetChildren(name);
+
+                if(a != null && b != null) children.Add(a, b);
+                else if(a != null) children.Add(a);
+                else if(b != null) children.Add(b);
+            }
+
+            return children;
+        }
     }
 }

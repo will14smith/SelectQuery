@@ -10,10 +10,10 @@ namespace SelectQuery.Evaluation.Slots
     {
         public static void Write(ref JsonWriter writer, SlottedQueryEvaluation.Slot value)
         {
-            switch (value)
+            switch (value.Type)
             {
-                case SlottedQueryEvaluation.Slot.SpanSlot spanSlot: WriteSpan(ref writer, spanSlot.Buffer); break;
-                case SlottedQueryEvaluation.Slot.ValueSlot valueSlot: WriteValue(ref writer, valueSlot.Value); break;
+                case SlottedQueryEvaluation.SlotType.Span: WriteSpan(ref writer, value.Buffer); break;
+                case SlottedQueryEvaluation.SlotType.Value: WriteValue(ref writer, value.Value); break;
                 
                 default: throw new ArgumentOutOfRangeException(nameof(value));
             }

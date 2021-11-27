@@ -1,38 +1,40 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 
 namespace SelectQuery.Evaluation.Slots
 {
-    internal class SlottedQueryEvaluation
+    internal class SlottedQueryEvaluation : IDisposable
     {
-        public SlottedQueryEvaluation(IReadOnlyList<Slot> slots)
+        private readonly Slot[] _slots;
+
+        public SlottedQueryEvaluation(Slot[] slots)
         {
-            Slots = slots;
+            _slots = slots;
         }
 
-        public IReadOnlyList<Slot> Slots { get; }
+        public IReadOnlyList<Slot> Slots => _slots;
 
-        public abstract class Slot
+        public struct Slot
         {
-            public class ValueSlot : Slot
-            {
-                public object Value { get; }
+            public SlotType Type { get; private set; }
+            public object Value { get; private set; }
+            public ArraySegment<byte> Buffer { get; private set; }
 
-                public ValueSlot(object value)
-                {
-                    Value = value;
-                }
-            }          
-            
-            public class SpanSlot : Slot
-            {
-                public ArraySegment<byte> Buffer { get; }
+            public static Slot CreateValue(object value) => new Slot { Type = SlotType.Value, Value = value };
+            public static Slot CreateSpan(ArraySegment<byte> value) => new Slot { Type = SlotType.Span, Buffer = value };
+        }
 
-                public SpanSlot(ArraySegment<byte> buffer)
-                {
-                    Buffer = buffer;
-                }
-            }
+        public enum SlotType
+        {
+            Empty,
+            Value,
+            Span,
+        }
+        
+        public void Dispose()
+        {
+            ArrayPool<Slot>.Shared.Return(_slots);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using Utf8Json;
 
@@ -9,31 +9,34 @@ namespace SelectQuery.Evaluation.Slots
     internal class SlottedQueryReader
     {
         private readonly SlottedQuery _query;
-        private readonly SlottedQueryEvaluation.Slot[] _slots;
-        public IReadOnlyList<SlottedQueryEvaluation.Slot> Slots => _slots;
-        
+        public SlottedQueryEvaluation.Slot[] Slots { get; }
+
         public SlottedQueryReader(SlottedQuery query)
         {
             _query = query;
-            _slots = new SlottedQueryEvaluation.Slot[query.NumberOfSlots];
+            Slots = ArrayPool<SlottedQueryEvaluation.Slot>.Shared.Rent(query.NumberOfSlots);
+            Array.Clear(Slots, 0, query.NumberOfSlots);
         }
         
         public void Read(ref JsonReader reader)
         {
-            var node = _query.SlotTree;
+            var nodes = PooledList.With(_query.SlotTree);
 
-            ReadNode(ref reader, new [] { node }, false);
+            using (nodes)
+            {
+                ReadNode(ref reader, ref nodes, false);
+            }
         }
 
-        private object ReadNode(ref JsonReader reader, IReadOnlyCollection<SlottedExpressionTree> nodes, bool needValue)
+        private object ReadNode(ref JsonReader reader, ref PooledList<SlottedExpressionTree> nodes, bool needValue)
         {
             // if node is a non-passthrough slot, capture whole object to output
             // if node is a passthrough slot, capture offsets to object
             // if not, read/skip as needed and recurse into children
 
-            needValue |= NeedValue(nodes);
+            needValue |= NeedValue(ref nodes);
 
-            var canSkipBlock = CanSkipReading(nodes);
+            var canSkipBlock = CanSkipReading(ref nodes);
             if (canSkipBlock && !needValue)
             {
                 reader.ReadNextBlock();
@@ -45,8 +48,8 @@ namespace SelectQuery.Evaluation.Slots
             var token = reader.GetCurrentJsonToken();
             var value = token switch
             {
-                JsonToken.BeginObject => ReadObject(ref reader, nodes, needValue),
-                JsonToken.BeginArray => ReadArray(ref reader, nodes, needValue),
+                JsonToken.BeginObject => ReadObject(ref reader, ref nodes, needValue),
+                JsonToken.BeginArray => ReadArray(ref reader, ref nodes, needValue),
                 JsonToken.Number => ReadNumber(ref reader),
                 JsonToken.String => reader.ReadString(),
                 JsonToken.True or JsonToken.False => reader.ReadBoolean(),
@@ -54,8 +57,10 @@ namespace SelectQuery.Evaluation.Slots
                 _ => throw new ArgumentOutOfRangeException($"unexpected token: {token} at {reader.GetCurrentOffsetUnsafe()}")
             };
 
-            foreach (var node in nodes)
+            for (var i = 0; i < nodes.Count; i++)
             {
+                var node = nodes[i];
+                
                 if (!node.Slot.IsSome)
                 {
                     continue;
@@ -64,21 +69,46 @@ namespace SelectQuery.Evaluation.Slots
                 if (node.Passthrough)
                 {
                     var buffer = new ArraySegment<byte>(reader.GetBufferUnsafe(), startOffset, checked(reader.GetCurrentOffsetUnsafe() - startOffset));
-                    _slots[node.Slot.AsT0] = new SlottedQueryEvaluation.Slot.SpanSlot(buffer);
+                    Slots[node.Slot.AsT0] = SlottedQueryEvaluation.Slot.CreateSpan(buffer);
                 }
                 else
                 {
-                    _slots[node.Slot.AsT0] = new SlottedQueryEvaluation.Slot.ValueSlot(value);
+                    Slots[node.Slot.AsT0] = SlottedQueryEvaluation.Slot.CreateValue(value);
                 }
             }
 
             return value;
         }
 
-        private static bool CanSkipReading(IEnumerable<SlottedExpressionTree> nodes) => nodes.All(node => node.Slot.IsNone && !node.HasChildren);
-        private static bool NeedValue(IEnumerable<SlottedExpressionTree> nodes) => nodes.Any(node => node.Slot.IsSome && !node.Passthrough);
+        private static bool CanSkipReading(ref PooledList<SlottedExpressionTree> nodes)
+        {
+            for (var index = 0; index < nodes.Count; index++)
+            {
+                var node = nodes[index];
+                if (!node.Slot.IsNone || node.HasChildren)
+                {
+                    return false;
+                }
+            }
 
-        private object ReadObject(ref JsonReader reader, IReadOnlyCollection<SlottedExpressionTree> nodes, bool needValue)
+            return true;
+        }
+
+        private static bool NeedValue(ref PooledList<SlottedExpressionTree> nodes)
+        {
+            for (var index = 0; index < nodes.Count; index++)
+            {
+                var node = nodes[index];
+                if (node.Slot.IsSome && !node.Passthrough)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private object ReadObject(ref JsonReader reader, ref PooledList<SlottedExpressionTree> nodes, bool needValue)
         {
             var value = needValue ? new Dictionary<string, object>() : null;
 
@@ -89,23 +119,29 @@ namespace SelectQuery.Evaluation.Slots
                 var prop = reader.ReadPropertyName();
 
                 var children = nodes.GetChildren(prop);
-                if (children.Count > 0)
+                using (children)
                 {
-                    var childValue = ReadNode(ref reader, children, needValue);
-                    if (needValue)
+                    if (children.Count > 0)
                     {
-                        value[prop] = childValue;
+                        var childValue = ReadNode(ref reader, ref children, needValue);
+                        if (needValue)
+                        {
+                            value[prop] = childValue;
+                        }
+                    }
+                    else if (needValue)
+                    {
+                        var empty = new PooledList<SlottedExpressionTree>();
+                        using (empty)
+                        {
+                            value[prop] = ReadNode(ref reader, ref empty, true);
+                        }
+                    }
+                    else
+                    {
+                        reader.ReadNextBlock();
                     }
                 }
-                else if (needValue)
-                {
-                    value[prop] = ReadNode(ref reader, null, true);
-                } 
-                else
-                {
-                    reader.ReadNextBlock();
-                }
-                
             } while (reader.ReadIsValueSeparator());
             
             reader.ReadIsEndObjectWithVerify();
@@ -113,7 +149,7 @@ namespace SelectQuery.Evaluation.Slots
             return value;
         }
         
-        private object ReadArray(ref JsonReader reader, IReadOnlyCollection<SlottedExpressionTree> nodes, bool needValue)
+        private object ReadArray(ref JsonReader reader, ref PooledList<SlottedExpressionTree> nodes, bool needValue)
         {
             var value = needValue ? new List<object>() : null;
             
@@ -121,7 +157,7 @@ namespace SelectQuery.Evaluation.Slots
 
             do
             {
-                var element = ReadNode(ref reader, nodes, needValue);
+                var element = ReadNode(ref reader, ref nodes, needValue);
                 if (needValue)
                 {
                     value.Add(element);

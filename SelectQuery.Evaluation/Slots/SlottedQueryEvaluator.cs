@@ -25,7 +25,7 @@ namespace SelectQuery.Evaluation.Slots
 
             var result = Evaluate<bool>(query.SlottedPredicate.AsT0, evaluation);
 
-            return !result.IsNone && result.AsT0;
+            return !result.IsNone && result.Value;
         } 
         
         public static void Write(ref JsonWriter writer, SlottedQuery query, SlottedQueryEvaluation evaluation)
@@ -56,30 +56,30 @@ namespace SelectQuery.Evaluation.Slots
                     hasWritten = true;
 
                     writer.WritePropertyName(column.Alias.AsT0);
-                    SlottedQueryWriter.Write(ref writer, result.AsT0);
+                    SlottedQueryWriter.Write(ref writer, result.Value);
                 }
 
                 writer.WriteEndObject();
             }
         }
 
-        private static Option<SlottedQueryEvaluation.Slot> EvaluateColumn(Expression expression, SlottedQueryEvaluation evaluation)
+        private static ValueOption<SlottedQueryEvaluation.Slot> EvaluateColumn(Expression expression, SlottedQueryEvaluation evaluation)
         {
             return expression switch {
-                SlottedExpression slot => evaluation.Slots[slot.Index] switch
+                SlottedExpression slot => evaluation.Slots[slot.Index].Type switch
                 {
-                    null => Option.None,
-                    var x => Option.Some(x),
+                    SlottedQueryEvaluation.SlotType.Empty => ValueOption.None,
+                    _ => ValueOption.Some(evaluation.Slots[slot.Index]),
                 },
-                _ => Evaluate<object>(expression, evaluation).Select(x => (SlottedQueryEvaluation.Slot) new SlottedQueryEvaluation.Slot.ValueSlot(x)),
+                _ => Evaluate<object>(expression, evaluation).Select(SlottedQueryEvaluation.Slot.CreateValue),
             };
         }
 
-        private static Option<T> Evaluate<T>(Expression expression, SlottedQueryEvaluation evaluation)
+        private static ValueOption<T> Evaluate<T>(Expression expression, SlottedQueryEvaluation evaluation)
         {
             return expression switch
             {
-                SlottedExpression slot => evaluation.Slots[slot.Index] != null ? Option.Some((T)((SlottedQueryEvaluation.Slot.ValueSlot)evaluation.Slots[slot.Index]).Value) : Option.None,
+                SlottedExpression slot => evaluation.Slots[slot.Index].Type == SlottedQueryEvaluation.SlotType.Value ? ValueOption.Some((T)evaluation.Slots[slot.Index].Value) : ValueOption.None,
                 Expression.BooleanLiteral lit => (T) (object) lit.Value,
                 Expression.NumberLiteral lit => (T) (object) lit.Value,
                 Expression.StringLiteral lit => (T) (object) lit.Value,

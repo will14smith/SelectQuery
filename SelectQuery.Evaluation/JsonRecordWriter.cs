@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using SelectParser.Queries;
 using Utf8Json;
 using Utf8Json.Resolvers;
@@ -9,7 +8,6 @@ namespace SelectQuery.Evaluation
     public class JsonRecordWriter
     {
         private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-        private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
 
         private readonly FromClause _from;
         private readonly SelectClause _select;

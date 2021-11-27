@@ -11,12 +11,12 @@ namespace SelectQuery.Benchmark
     [MemoryDiagnoser]
     public class OldVsNew
     {
-        [Params(@"SELECT s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"SELECT * FROM s3object s WHERE s.a = 1 and s.a < 3")]
+        [Params(@"SELECT s.d.d1, s.""d"".d2.""d2.2"" FROM s3object s", @"SELECT * FROM s3object s WHERE s.a = 1 and s.a < 3")]
         public string Query;
 
         [Params(1, 2000)] 
-        public int RecordCount;
-
+        public int RecordSize;
+        
         private byte[] _data;
         private Query _query;
 
@@ -31,8 +31,8 @@ namespace SelectQuery.Benchmark
             _old = new JsonLinesEvaluator(_query);
             _new = new JsonLinesEvaluatorNew(_query);
             
-            const string Data = @"{""a"":1,""b"":2,""c"":[1,2,3],""d"":{""d1"":""d1"",""d2"":{""d2.2"":true},""d3"":3}}";
-            _data = Encoding.UTF8.GetBytes(string.Join("\n", Enumerable.Repeat(Data, RecordCount)) + "\n");
+            var data = @"{""a"":1,""b"":2,""c"":[1,2,3],""d"":{""d1"":""d1"",""d2"":{""d2.2"":true},""d3"":3}," + string.Join(",", Enumerable.Range(1, RecordSize).Select(x => $"\"n{x}\": {(x % 2 == 0 ? $"{x*397}" : $"\"xxx{x}xxx\"")}")) + "}";
+            _data = Encoding.UTF8.GetBytes(string.Join("\n", Enumerable.Repeat(data, 100)) + "\n");
         }
 
         [Benchmark]

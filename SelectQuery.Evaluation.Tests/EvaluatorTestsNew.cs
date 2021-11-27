@@ -1,8 +1,10 @@
 ﻿using System.Linq;
 using System.Text;
+using JetBrains.dotMemoryUnit;
 using SelectParser;
 using SelectParser.Queries;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace SelectQuery.Evaluation.Tests
 {
@@ -10,6 +12,11 @@ namespace SelectQuery.Evaluation.Tests
     {
         const string ProjectionRecord = @"{""a"":1,""b"":2,""c"":[1,2,3],""d"":{""d1"":""d1"",""d2"":{""d2.2"":true},""d3"":3}}";
 
+        public EvaluatorTestsNew(ITestOutputHelper output)
+        {
+            DotMemoryUnitTestOutput.SetOutputMethod(output.WriteLine);
+        }
+        
         [Theory]
 
         [InlineData("SELECT 1 FROM s3object", @"{""_1"":1}")]
@@ -38,13 +45,16 @@ namespace SelectQuery.Evaluation.Tests
         [InlineData("SELECT s.a, s.c FROM s3object s", @"{""a"":1,""c"":[1,2,3]}")]
         [InlineData("SELECT s.a as b, s.b as a FROM s3object s", @"{""b"":1,""a"":2}")]
         [InlineData(@"SELECT s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"{""d1"":""d1"",""d2.2"":true}")]
+        // [DotMemoryUnit(CollectAllocations = true, SavingStrategy = SavingStrategy.OnAnyFail, Directory = @"C:\Projects\SelectQuery\snapshots")]
         public void ProjectionQueries(string queryString, string expectedRecord)
         {
             var query = ParseQuery(queryString);
-            var data = new[] {ProjectionRecord};
+            var data = Enumerable.Repeat(ProjectionRecord, 1).ToArray();
             var expectedResponse = new[] {expectedRecord};
 
+            // dotMemory.Check();
             var response = Evaluate(query, data);
+            // dotMemory.Check();
 
             AssertResponse(expectedResponse, response);
         }

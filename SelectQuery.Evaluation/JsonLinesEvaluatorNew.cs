@@ -63,7 +63,7 @@ namespace SelectQuery.Evaluation
                 return false;
             }
             
-            var eval = SlottedQueryEvaluator.Evaluate(_query, ref reader);
+            using var eval = SlottedQueryEvaluator.Evaluate(_query, ref reader);
             if (!SlottedQueryEvaluator.EvaluatePredicate(_query, eval))
             {
                 return true;
