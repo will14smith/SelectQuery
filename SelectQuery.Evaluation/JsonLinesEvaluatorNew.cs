@@ -3,7 +3,6 @@ using System.Linq;
 using SelectParser.Queries;
 using SelectQuery.Evaluation.Slots;
 using Utf8Json;
-using Utf8Json.Resolvers;
 
 namespace SelectQuery.Evaluation
 {

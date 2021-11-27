@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Utf8Json;
 
@@ -21,44 +22,45 @@ namespace SelectQuery.Evaluation.Slots
         {
             var node = _query.SlotTree;
 
-            ReadNode(ref reader, node, false);
+            ReadNode(ref reader, new [] { node }, false);
         }
 
-        private object ReadNode(ref JsonReader reader, SlottedExpressionTree node, bool needValue)
+        private object ReadNode(ref JsonReader reader, IReadOnlyCollection<SlottedExpressionTree> nodes, bool needValue)
         {
             // if node is a non-passthrough slot, capture whole object to output
             // if node is a passthrough slot, capture offsets to object
             // if not, read/skip as needed and recurse into children
 
-            int startOffset = reader.GetCurrentOffsetUnsafe();
+            needValue |= NeedValue(nodes);
 
-            if (node != null)
+            var canSkipBlock = CanSkipReading(nodes);
+            if (canSkipBlock && !needValue)
             {
-                if (node.Slot.IsNone && node.Children.Count == 0 && !needValue)
-                {
-                    reader.ReadNextBlock();
-                    return null;
-                }
-
-                needValue |= node.Slot.IsSome && !node.Passthrough;
+                reader.ReadNextBlock();
+                return null;
             }
-
+            
+            var startOffset = reader.GetCurrentOffsetUnsafe();
 
             var token = reader.GetCurrentJsonToken();
             var value = token switch
             {
-                JsonToken.BeginObject => ReadObject(ref reader, node, needValue),
-                JsonToken.BeginArray => ReadArray(ref reader, node, needValue),
+                JsonToken.BeginObject => ReadObject(ref reader, nodes, needValue),
+                JsonToken.BeginArray => ReadArray(ref reader, nodes, needValue),
                 JsonToken.Number => ReadNumber(ref reader),
                 JsonToken.String => reader.ReadString(),
                 JsonToken.True or JsonToken.False => reader.ReadBoolean(),
                 JsonToken.Null => ReadNull(ref reader),
-                _ => throw new ArgumentOutOfRangeException(
-                    $"unexpected token: {token} at {reader.GetCurrentOffsetUnsafe()}")
+                _ => throw new ArgumentOutOfRangeException($"unexpected token: {token} at {reader.GetCurrentOffsetUnsafe()}")
             };
 
-            if (node != null && node.Slot.IsSome)
+            foreach (var node in nodes)
             {
+                if (!node.Slot.IsSome)
+                {
+                    continue;
+                }
+                
                 if (node.Passthrough)
                 {
                     var buffer = new ArraySegment<byte>(reader.GetBufferUnsafe(), startOffset, checked(reader.GetCurrentOffsetUnsafe() - startOffset));
@@ -69,11 +71,14 @@ namespace SelectQuery.Evaluation.Slots
                     _slots[node.Slot.AsT0] = new SlottedQueryEvaluation.Slot.ValueSlot(value);
                 }
             }
-            
+
             return value;
-        } 
-        
-        private object ReadObject(ref JsonReader reader, SlottedExpressionTree node, bool needValue)
+        }
+
+        private static bool CanSkipReading(IEnumerable<SlottedExpressionTree> nodes) => nodes.All(node => node.Slot.IsNone && !node.HasChildren);
+        private static bool NeedValue(IEnumerable<SlottedExpressionTree> nodes) => nodes.Any(node => node.Slot.IsSome && !node.Passthrough);
+
+        private object ReadObject(ref JsonReader reader, IReadOnlyCollection<SlottedExpressionTree> nodes, bool needValue)
         {
             var value = needValue ? new Dictionary<string, object>() : null;
 
@@ -83,9 +88,10 @@ namespace SelectQuery.Evaluation.Slots
             {
                 var prop = reader.ReadPropertyName();
 
-                if (node != null && node.Children.TryGetValue(prop, out var child))
+                var children = nodes.GetChildren(prop);
+                if (children.Count > 0)
                 {
-                    var childValue = ReadNode(ref reader, child, needValue);
+                    var childValue = ReadNode(ref reader, children, needValue);
                     if (needValue)
                     {
                         value[prop] = childValue;
@@ -107,7 +113,7 @@ namespace SelectQuery.Evaluation.Slots
             return value;
         }
         
-        private object ReadArray(ref JsonReader reader, SlottedExpressionTree node, bool needValue)
+        private object ReadArray(ref JsonReader reader, IReadOnlyCollection<SlottedExpressionTree> nodes, bool needValue)
         {
             var value = needValue ? new List<object>() : null;
             
@@ -115,7 +121,7 @@ namespace SelectQuery.Evaluation.Slots
 
             do
             {
-                var element = ReadNode(ref reader, node, needValue);
+                var element = ReadNode(ref reader, nodes, needValue);
                 if (needValue)
                 {
                     value.Add(element);
@@ -130,7 +136,7 @@ namespace SelectQuery.Evaluation.Slots
         private static object ReadNumber(ref JsonReader reader)
         {
             var segment = reader.ReadNumberSegment();
-            var str = Encoding.UTF8.GetString(segment.Array, segment.Offset, segment.Count);
+            var str = Encoding.UTF8.GetString(segment.Array!, segment.Offset, segment.Count);
             return decimal.Parse(str);
         }
 

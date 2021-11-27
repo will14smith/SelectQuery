@@ -9,17 +9,36 @@ namespace SelectQuery.Evaluation.Slots
     // TODO check case-sensitivity
     internal class SlottedExpressionTree
     {
-        public IReadOnlyDictionary<string, SlottedExpressionTree> Children { get; }
+        private readonly IReadOnlyDictionary<string, SlottedExpressionTree> _caseSensitiveChildren;
+        private readonly IReadOnlyDictionary<string, SlottedExpressionTree> _caseInsensitiveChildren;
+
+        public bool HasChildren => _caseSensitiveChildren.Count > 0 || _caseInsensitiveChildren.Count > 0;
         public Option<int> Slot { get; }
         public bool Passthrough { get; }
-
-        private SlottedExpressionTree(IReadOnlyDictionary<string, SlottedExpressionTree> children, Option<int> slot, bool passthrough)
+        
+        private SlottedExpressionTree(IReadOnlyDictionary<string, SlottedExpressionTree> caseSensitiveChildren, IReadOnlyDictionary<string, SlottedExpressionTree> caseInsensitiveChildren, Option<int> slot, bool passthrough)
         {
-            Children = children;
+            _caseSensitiveChildren = caseSensitiveChildren;
+            _caseInsensitiveChildren = caseInsensitiveChildren;
+            
             Slot = slot;
             Passthrough = passthrough;
         }
-        
+
+        public SlottedExpressionTree[] GetChildren(string name)
+        {
+            var a = _caseSensitiveChildren.TryGetValue(name, out var v1);
+            var b = _caseInsensitiveChildren.TryGetValue(name, out var v2);
+
+            return (a, b) switch
+            {
+                (true, true) => new[] { v1, v2 },
+                (true, false) => new[] { v1 },
+                (false, true) => new[] { v2 },
+                (false, false) => Array.Empty<SlottedExpressionTree>(),
+            };
+        }
+
         public class Builder
         {
             public BuilderNode Root { get; } = new();
@@ -32,6 +51,7 @@ namespace SelectQuery.Evaluation.Slots
                 while (true)
                 {
                     var identifier = qualified.Identifiers[identifierIndex].Name;
+                    var isCaseSensitive = qualified.Identifiers[identifierIndex].CaseSensitive;
 
                     if (identifier == "*")
                     {
@@ -42,10 +62,21 @@ namespace SelectQuery.Evaluation.Slots
 
                         return node;
                     }
-                
-                    if (!node.Children.TryGetValue(identifier, out var child))
+
+                    BuilderNode child;
+                    if (isCaseSensitive)
                     {
-                        node.Children[identifier] = child = new BuilderNode();
+                        if (!node.CaseSensitiveChildren.TryGetValue(identifier, out child))
+                        {
+                            node.CaseSensitiveChildren[identifier] = child = new BuilderNode();
+                        }
+                    }
+                    else
+                    {
+                        if (!node.CaseInsensitiveChildren.TryGetValue(identifier, out child))
+                        {
+                            node.CaseInsensitiveChildren[identifier] = child = new BuilderNode();
+                        }
                     }
                 
                     identifierIndex++;
@@ -62,11 +93,17 @@ namespace SelectQuery.Evaluation.Slots
 
         public class BuilderNode
         {
-            public Dictionary<string, BuilderNode> Children { get; } = new();
+            public Dictionary<string, BuilderNode> CaseSensitiveChildren { get; } = new();
+            public Dictionary<string, BuilderNode> CaseInsensitiveChildren { get; } = new(StringComparer.OrdinalIgnoreCase);
             public Option<int> Slot { get; set; } = Option.None;
             public bool Passthrough { get; set; } = true;
 
-            public SlottedExpressionTree Build() => new SlottedExpressionTree(Children.ToDictionary(x => x.Key, x => x.Value.Build()), Slot, Passthrough);
+            public SlottedExpressionTree Build() => new SlottedExpressionTree(CaseSensitiveChildren.ToDictionary(x => x.Key, x => x.Value.Build()), CaseInsensitiveChildren.ToDictionary(x => x.Key, x => x.Value.Build(), StringComparer.OrdinalIgnoreCase), Slot, Passthrough);
         }
+    }
+
+    internal static class SlottedExpressionTreeExtensions
+    {
+        public static IReadOnlyCollection<SlottedExpressionTree> GetChildren(this IReadOnlyCollection<SlottedExpressionTree> nodes, string name) => nodes.SelectMany(node => node.GetChildren(name)).ToArray();
     }
 }
