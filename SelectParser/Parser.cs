@@ -111,14 +111,23 @@ namespace SelectParser
             select (Expression)new Expression.In(expression, values)
         ).Try().Or(Additive);
 
-        public static readonly TokenListParser<SelectToken, Expression> Presence =
+        public static readonly TokenListParser<SelectToken, Expression> IsNull =
         (
             from expression in Membership
             from @is in Token.EqualTo(SelectToken.Is)
             from not in Token.EqualTo(SelectToken.Not).Optional()
+            from @null in Token.EqualTo(SelectToken.Null)
+            select (Expression)new Expression.IsNull(expression, not.HasValue)
+        ).Try().Or(Membership);
+        
+        public static readonly TokenListParser<SelectToken, Expression> Presence =
+        (
+            from expression in IsNull
+            from @is in Token.EqualTo(SelectToken.Is)
+            from not in Token.EqualTo(SelectToken.Not).Optional()
             from missing in Token.EqualTo(SelectToken.Missing)
             select (Expression)new Expression.Presence(expression, !not.HasValue)
-        ).Try().Or(Membership);
+        ).Try().Or(IsNull);
 
         public static readonly TokenListParser<SelectToken, Expression> Containment =
         (

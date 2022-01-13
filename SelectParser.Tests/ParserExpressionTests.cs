@@ -254,7 +254,7 @@ namespace SelectParser.Tests
         }
 
         #endregion
-
+        
         #region Presence
 
         [Fact]
@@ -297,6 +297,48 @@ namespace SelectParser.Tests
 
         #endregion
 
+        #region IsNull
+
+        [Fact]
+        public void ParsingIsNull()
+        {
+            var input = "test IS NULL";
+
+            var result = Parse(Parser.IsNull, input);
+
+            var expression = AssertSuccess(result);
+            var presence = Assert.IsType<Expression.IsNull>(expression);
+            var identifier = Assert.IsType<Expression.Identifier>(presence.Expression);
+            Assert.Equal("test", identifier.Name);
+            Assert.False(presence.Negate);
+        }
+
+        [Fact]
+        public void ParsingNotIsNull()
+        {
+            var input = "test IS NOT NULL";
+
+            var result = Parse(Parser.Presence, input);
+
+            var expression = AssertSuccess(result);
+            var presence = Assert.IsType<Expression.IsNull>(expression);
+            Assert.True(presence.Negate);
+        }
+
+        [Fact]
+        public void ParsingNoIsNull()
+        {
+            var input = "test";
+
+            var result = Parse(Parser.Presence, input);
+
+            var select = AssertSuccess(result);
+            var identifier = Assert.IsType<Expression.Identifier>(select);
+            Assert.Equal("test", identifier.Name);
+        }
+
+        #endregion
+        
         #region Membership
 
         [Fact]

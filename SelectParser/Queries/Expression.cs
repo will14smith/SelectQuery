@@ -5,7 +5,7 @@ using OneOf;
 
 namespace SelectParser.Queries
 {
-    public abstract class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.Presence, Expression.In, Expression.Like>
+    public abstract class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.IsNull, Expression.Presence, Expression.In, Expression.Like>
     {
         public abstract override string ToString();
 
@@ -319,6 +319,43 @@ namespace SelectParser.Queries
             }
         }
 
+        public class IsNull : Expression
+        {
+            public IsNull(Expression expression, bool negate)
+            {
+                Expression = expression;
+                Negate = negate;
+            }
+
+            public Expression Expression { get; }
+            public bool Negate { get; }
+
+            protected bool Equals(IsNull other)
+            {
+                return base.Equals(other) && Equals(Expression, other.Expression) && Negate == other.Negate;
+            }
+
+            public override bool Equals(object obj)
+            {
+                return ReferenceEquals(this, obj) || obj is IsNull other && Equals(other);
+            }
+
+            public override int GetHashCode()
+            {
+                unchecked
+                {
+                    var hashCode = base.GetHashCode();
+                    hashCode = (hashCode * 397) ^ (Expression?.GetHashCode() ?? 0);
+                    hashCode = (hashCode * 397) ^ Negate.GetHashCode();
+                    return hashCode;
+                }
+            }
+
+            public override string ToString()
+            {
+                return $"{Expression} IS {(Negate ? "" : "NOT ")}NULL";
+            }
+        }
         public class Presence : Expression
         {
             public Presence(Expression expression, bool negate)
