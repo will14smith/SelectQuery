@@ -604,6 +604,19 @@ namespace SelectParser.Tests
             var identifier = Assert.IsType<Expression.BooleanLiteral>(expression);
             Assert.True(identifier.Value);
         }
+
+        [Fact]
+        public void ParsingBracketedExpression()
+        {
+            var input = "(a or b)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var binary = Assert.IsType<Expression.Binary>(expression);
+            Assert.Equal(BinaryOperator.Or, binary.Operator);
+        }
+        
         #endregion
     }
 }
