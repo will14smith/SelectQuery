@@ -51,11 +51,18 @@ namespace SelectParser
             return result;
         }
 
+        public static readonly TokenListParser<SelectToken, Expression> BracketExpression =
+            from begin in Token.EqualTo(SelectToken.LeftBracket)
+            from expr in Parse.Ref(() => Expression)
+            from end in Token.EqualTo(SelectToken.RightBracket)
+            select expr;
+
         public static readonly TokenListParser<SelectToken, Expression> Term =
             QualifiedIdentifier
                 .Or(Number.Select(x => (Expression)new Expression.NumberLiteral(x)))
                 .Or(String.Select(x => (Expression)new Expression.StringLiteral(x)))
-                .Or(Boolean.Select(x => (Expression)new Expression.BooleanLiteral(x)));
+                .Or(Boolean.Select(x => (Expression)new Expression.BooleanLiteral(x)))
+                .Or(BracketExpression);
 
         public static readonly TokenListParser<SelectToken, Expression> Unary =
             (

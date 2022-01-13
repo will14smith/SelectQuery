@@ -353,7 +353,7 @@ namespace SelectParser.Queries
 
             public override string ToString()
             {
-                return $"{Expression} IS {(Negate ? "" : "NOT ")}NULL";
+                return $"{Expression} IS {(Negate ? "NOT " : "")}NULL";
             }
         }
         public class Presence : Expression
