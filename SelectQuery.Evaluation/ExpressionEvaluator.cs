@@ -20,6 +20,7 @@ namespace SelectQuery.Evaluation
                 unary => EvaluateUnary<T>(unary, obj),
                 binary => EvaluateBinary<T>(binary, obj),
                 between => (T)(object)EvaluateBetween(between, obj),
+                isNull => (T)(object)EvaluateIsNull(isNull, obj),
                 presence => (T)(object)EvaluatePresence(presence, obj),
                 inExpr => (T)(object)EvaluateIn(inExpr, obj),
                 like => (T)(object)EvaluateLike(like, obj)
@@ -149,6 +150,15 @@ namespace SelectQuery.Evaluation
             throw new NotImplementedException();
         }
 
+        private bool EvaluateIsNull(Expression.IsNull isNull, object obj)
+        {
+            var value = Evaluate<object>(isNull.Expression, obj);
+
+            var hasValue = value.IsSome && value.AsT0 is not null;
+
+            return hasValue == isNull.Negate;
+        }
+        
         private bool EvaluatePresence(Expression.Presence presence, object obj)
         {
             var value = Evaluate<object>(presence.Expression, obj);

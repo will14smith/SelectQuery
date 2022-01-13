@@ -56,6 +56,8 @@ namespace SelectQuery.Evaluation.Tests
         [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1 and s.a < 3", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 1)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1 or s.a >= 3", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 2)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a in (1, 2)", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 2)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NULL", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":null}" }, 2)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NOT NULL", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":null}" }, 1)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a IS MISSING", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":3}" }, 1)]
         [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NOT MISSING", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":3}" }, 2)]
         public void WhereQueries(string queryString, string[] records, int expectedCount)
