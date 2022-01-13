@@ -22,6 +22,7 @@ namespace SelectParser
             { "DESC", SelectToken.Desc },
             { "IS", SelectToken.Is },
             { "MISSING", SelectToken.Missing },
+            { "NULL", SelectToken.Null },
 
             { "TRUE", SelectToken.BooleanLiteral },
             { "FALSE", SelectToken.BooleanLiteral },
