@@ -17,6 +17,7 @@ namespace SelectQuery.Evaluation
                 boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
                 identifier => EvaluateIdentifier<T>(identifier, obj),
                 qualified => EvaluateQualified<T>(qualified, obj),
+                function => throw new NotImplementedException(),
                 unary => EvaluateUnary<T>(unary, obj),
                 binary => EvaluateBinary<T>(binary, obj),
                 between => (T)(object)EvaluateBetween(between, obj),

@@ -24,6 +24,12 @@ namespace SelectParser
             { "MISSING", SelectToken.Missing },
             { "NULL", SelectToken.Null },
 
+            { "AVG", SelectToken.Avg },
+            { "COUNT", SelectToken.Count },
+            { "MAX", SelectToken.Max },
+            { "MIN", SelectToken.Min },
+            { "SUM", SelectToken.Sum },
+
             { "TRUE", SelectToken.BooleanLiteral },
             { "FALSE", SelectToken.BooleanLiteral },
 

@@ -69,6 +69,33 @@ namespace SelectQuery.Evaluation.Tests
             Assert.Equal(expectedCount, response.Count(x => x == '\n'));
         }
 
+        [Theory]
+
+        [InlineData("SELECT AVG(s.a) FROM s3object s", true, @"{""_1"":10}")]
+        [InlineData("SELECT AVG(s.a) FROM s3object s", false, @"{""_1"":null}")]
+        [InlineData("SELECT COUNT(*) FROM s3object s", true, @"{""_1"":5}")]
+        [InlineData("SELECT COUNT(*) FROM s3object s", false, @"{""_1"":0}")]
+        [InlineData("SELECT COUNT(s.a) FROM s3object s", true, @"{""_1"":3}")]
+        [InlineData("SELECT COUNT(s.a) FROM s3object s", false, @"{""_1"":0}")]
+        [InlineData("SELECT MAX(s.a) FROM s3object s", true, @"{""_1"":15}")]
+        [InlineData("SELECT MAX(s.a) FROM s3object s", false, @"{""_1"":null}")]
+        [InlineData("SELECT MIN(s.a) FROM s3object s", true, @"{""_1"":5}")]
+        [InlineData("SELECT MIN(s.a) FROM s3object s", false, @"{""_1"":null}")]
+        [InlineData("SELECT SUM(s.a) FROM s3object s", true, @"{""_1"":30}")]
+        [InlineData("SELECT SUM(s.a) FROM s3object s", false, @"{""_1"":null}")]
+        [InlineData("SELECT MAX(s.a), COUNT(*) as NumOfItems, SUM(s.a) FROM s3object s", true, @"{""_1"":15,""NumOfItems"":5,""_3"":30}")]
+        [InlineData("SELECT MAX(s.a), COUNT(*) as NumOfItems, SUM(s.a) FROM s3object s", false, @"{""_1"":null,""NumOfItems"":0,""_3"":null}")]
+        public void AggregateQueries(string queryString, bool withData, string expectedRecord)
+        {
+            var query = ParseQuery(queryString);
+            var data = withData ? new [] { @"{""a"": 5}", @"{""a"": 10}", @"{""a"": 15}", @"{}", @"{""b"": 5}" } : new string[] { };
+            var expectedResponse = new[] {expectedRecord};
+
+            var response = Evaluate(query, data);
+
+            AssertResponse(expectedResponse, response);
+        }
+        
         private static Query ParseQuery(string query)
         {
             var tokens = new SelectTokenizer().Tokenize(query);

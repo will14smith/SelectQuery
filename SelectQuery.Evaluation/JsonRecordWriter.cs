@@ -63,7 +63,7 @@ namespace SelectQuery.Evaluation
             }
         }
 
-        private static string GetColumnName(int index, Column column)
+        internal static string GetColumnName(int index, Column column)
         {
             if (column.Alias.IsSome)
             {

@@ -1,5 +1,5 @@
-﻿using System;
-using System.Linq;
+﻿using OneOf.Types;
+using SelectParser;
 using SelectParser.Queries;
 using Utf8Json;
 using Utf8Json.Resolvers;
@@ -16,71 +16,88 @@ namespace SelectQuery.Evaluation
 
         public JsonLinesEvaluator(Query query)
         {
-            ValidateQuery(query);
-
+            var validator = new QueryValidator();
+            validator.Validate(query);
+            validator.ThrowIfErrors();
+            
             _query = query;
             _recordWriter = new JsonRecordWriter(query.From, query.Select);
         }
 
         public byte[] Run(byte[] file)
         {
-
             var reader = new JsonReader(file);
             var writer = new JsonWriter();
 
-            while (ProcessRecord(ref reader, ref writer)) { }
+            if (QueryValidator.IsAggregateQuery(_query))
+            {
+                ProcessAggregate(ref reader, ref writer);
+            }
+            else
+            {
+                while (ProcessRecord(ref reader, ref writer)) { }
+            }
 
             return writer.ToUtf8ByteArray();
         }
-
-        private static void ValidateQuery(Query query)
+        
+        private void ProcessAggregate(ref JsonReader reader, ref JsonWriter writer)
         {
-            if (!string.Equals(query.From.Table, "S3Object", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new NotImplementedException("complex table targets are not currently supported");
-            }
+            var state = new AggregateProcessor(_query);
 
-            if (query.Order.IsSome)
-            {
-                throw new NotImplementedException("ordering is not currently supported");
-            }
-
-            if (query.Select.IsT1 && query.Select.AsT1.Columns.Any(x => IsQualifiedStar(x.Expression)))
-            {
-                throw new NotImplementedException("qualified star projections not currently supported");
-            }
-
-            // TODO validate query semantics?
-        }
-
-        private static bool IsQualifiedStar(Expression expr)
-        {
             while (true)
             {
-                if (expr.IsT3) return expr.AsT3.Name == "*";
-                if (!expr.IsT4) return false;
-                expr = expr.AsT4.Expression;
-            }
-        }
+                var readResult = ReadRecord(ref reader);
+                if (readResult.IsNone)
+                {
+                    break;
+                }
 
+                var record = readResult.AsT0;
+                if (TestPredicate(record))
+                {
+                    state.ProcessRecord(record);
+                }
+            }
+
+            state.Write(ref writer);
+            writer.WriteRaw((byte) '\n');
+        }
+        
         private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer)
         {
-            reader.SkipWhiteSpace();
-            if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
+            var readResult = ReadRecord(ref reader);
+            if (readResult.IsNone)
             {
                 return false;
             }
 
-            var obj = Formatter.Deserialize(ref reader, StandardResolver.Default);
-
-            var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, obj), _ => true);
-            if (wherePassed.IsSome && wherePassed.AsT0)
+            var record = readResult.AsT0;
+            if (TestPredicate(record))
             {
-                _recordWriter.Write(ref writer, obj);
+                _recordWriter.Write(ref writer, record);
                 writer.WriteRaw((byte) '\n');
             }
 
             return true;
+        }
+
+        private Option<object> ReadRecord(ref JsonReader reader)
+        {
+            reader.SkipWhiteSpace();
+            if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
+            {
+                return new None();
+            }
+
+            return Formatter.Deserialize(ref reader, StandardResolver.Default);
+        }
+
+        private bool TestPredicate(object record)
+        {
+            var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
+
+            return wherePassed.IsSome && wherePassed.AsT0;
         }
     }
 }

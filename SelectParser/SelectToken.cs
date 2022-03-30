@@ -22,6 +22,12 @@
         Is,
         Missing,
         Null,
+        // functions
+        Avg,
+        Count,
+        Max,
+        Min,
+        Sum,
         // operators
         Dot,
         Comma,

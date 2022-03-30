@@ -480,7 +480,7 @@ namespace SelectParser.Tests
         #endregion
 
         #region Term
-
+        
         [Fact]
         public void ParsingIdentifier()
         {
@@ -541,6 +541,46 @@ namespace SelectParser.Tests
             var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
             Assert.Equal("a", qualified.Qualification.Name);
             AssertIdentifier("*", qualified.Expression);
+        }
+        [Fact]
+        public void ParsingFunction()
+        {
+            var input = "AVG(Value)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+            var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
+            var average = Assert.IsType<AggregateFunction.Average>(aggregate.Value);
+            AssertIdentifier("Value", average.Expression);
+        }
+        [Fact]
+        public void ParsingCountColumn()
+        {
+            var input = "COUNT(Value)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+            var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
+            var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
+            Assert.True(count.Expression.IsSome);
+            AssertIdentifier("Value", count.Expression.AsT0);
+        }
+        [Fact]
+        public void ParsingCountStar()
+        {
+            var input = "COUNT(*)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+            var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
+            var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
+            Assert.True(count.Expression.IsNone);
         }
         [Fact]
         public void ParsingNumberLiteral()
