@@ -69,6 +69,24 @@ namespace SelectQuery.Evaluation.Tests
             Assert.Equal(expectedCount, response.Count(x => x == '\n'));
         }
 
+        [Theory]
+
+        [InlineData("SELECT AVG(a) FROM s3object", @"{""_1"":10}")]
+        [InlineData("SELECT COUNT(*) FROM s3object", @"{""_1"":5}")]
+        [InlineData("SELECT MAX(a) FROM s3object", @"{""_1"":15}")]
+        [InlineData("SELECT MIN(a) FROM s3object", @"{""_1"":5}")]
+        [InlineData("SELECT SUM(a) FROM s3object", @"{""_1"":30}")]
+        public void AggregateQueries(string queryString, string expectedRecord)
+        {
+            var query = ParseQuery(queryString);
+            var data = new [] { @"{""a"": 5}", @"{""a"": 10}", @"{""a"": 15}", @"{}", @"{""b"": 5}" };
+            var expectedResponse = new[] {expectedRecord};
+
+            var response = Evaluate(query, data);
+
+            AssertResponse(expectedResponse, response);
+        }
+        
         private static Query ParseQuery(string query)
         {
             var tokens = new SelectTokenizer().Tokenize(query);
