@@ -556,6 +556,33 @@ namespace SelectParser.Tests
             AssertIdentifier("Value", average.Expression);
         }
         [Fact]
+        public void ParsingCountColumn()
+        {
+            var input = "COUNT(Value)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+            var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
+            var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
+            Assert.True(count.Expression.IsSome);
+            AssertIdentifier("Value", count.Expression.AsT0);
+        }
+        [Fact]
+        public void ParsingCountStar()
+        {
+            var input = "COUNT(*)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+            var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
+            var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
+            Assert.True(count.Expression.IsNone);
+        }
+        [Fact]
         public void ParsingNumberLiteral()
         {
             var input = "123";

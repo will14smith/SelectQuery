@@ -34,11 +34,21 @@ namespace SelectParser
         #region function
 
         private static readonly TokenListParser<SelectToken, Function> AvgFunction = SingleParameterFunction(SelectToken.Avg, x => new AggregateFunction.Average(x));
-        private static readonly TokenListParser<SelectToken, Function> CountFunction = Token.Sequence(SelectToken.Count, SelectToken.LeftBracket, SelectToken.Star, SelectToken.RightBracket).Select(_ => (Function) (AggregateFunction) new AggregateFunction.Count());
+        private static readonly TokenListParser<SelectToken, Function> CountFunction = SingleParameterFunction(SelectToken.Count, BuildCountFunction);
         private static readonly TokenListParser<SelectToken, Function> MaxFunction = SingleParameterFunction(SelectToken.Max, x => new AggregateFunction.Max(x));
         private static readonly TokenListParser<SelectToken, Function> MinFunction = SingleParameterFunction(SelectToken.Min, x => new AggregateFunction.Min(x));
         private static readonly TokenListParser<SelectToken, Function> SumFunction = SingleParameterFunction(SelectToken.Sum, x => new AggregateFunction.Sum(x));
 
+        private static AggregateFunction BuildCountFunction(Expression expression)
+        {
+            if (expression.Value is Expression.Identifier { Name: "*" })
+            {
+                return new AggregateFunction.Count(new None());
+            }
+            
+            return new AggregateFunction.Count(expression);
+        }
+        
         private static readonly TokenListParser<SelectToken, Function> AggregateFunction = AvgFunction.Or(CountFunction).Or(MaxFunction).Or(MinFunction).Or(SumFunction);
         private static readonly TokenListParser<SelectToken, Function> Function = AggregateFunction;
         private static readonly TokenListParser<SelectToken, Expression> FunctionExpression = Function.Select(x => (Expression) new Expression.FunctionExpression(x));

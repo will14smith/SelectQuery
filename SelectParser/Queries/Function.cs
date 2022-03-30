@@ -8,7 +8,6 @@ namespace SelectParser.Queries
         public override string ToString() => Value.ToString();
     }
 
-
     [GenerateOneOf]
     public partial class AggregateFunction : OneOfBase<AggregateFunction.Average, AggregateFunction.Count,
         AggregateFunction.Max, AggregateFunction.Min, AggregateFunction.Sum>
@@ -42,7 +41,14 @@ namespace SelectParser.Queries
 
         public class Count
         {
-            protected bool Equals(Count other) => base.Equals(other);
+            public Count(Option<Expression> expression)
+            {
+                Expression = expression;
+            }
+
+            public Option<Expression> Expression { get; }
+
+            protected bool Equals(Count other) => base.Equals(other) && Expression.Equals(other.Expression);
 
             public override bool Equals(object obj) =>
                 ReferenceEquals(this, obj) || obj is Count other && Equals(other);
@@ -51,11 +57,11 @@ namespace SelectParser.Queries
             {
                 unchecked
                 {
-                    return base.GetHashCode() * 397;
+                    return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
                 }
             }
 
-            public override string ToString() => $"COUNT(*)";
+            public override string ToString() => $"COUNT({(Expression.IsSome ? Expression : "*")})";
         }
 
         public class Max

@@ -71,11 +71,12 @@ namespace SelectQuery.Evaluation.Tests
 
         [Theory]
 
-        [InlineData("SELECT AVG(a) FROM s3object", @"{""_1"":10}")]
-        [InlineData("SELECT COUNT(*) FROM s3object", @"{""_1"":5}")]
-        [InlineData("SELECT MAX(a) FROM s3object", @"{""_1"":15}")]
-        [InlineData("SELECT MIN(a) FROM s3object", @"{""_1"":5}")]
-        [InlineData("SELECT SUM(a) FROM s3object", @"{""_1"":30}")]
+        [InlineData("SELECT AVG(s.a) FROM s3object s", @"{""_1"":10}")]
+        [InlineData("SELECT COUNT(*) FROM s3object s", @"{""_1"":5}")]
+        [InlineData("SELECT COUNT(s.a) FROM s3object s", @"{""_1"":3}")]
+        [InlineData("SELECT MAX(s.a) FROM s3object s", @"{""_1"":15}")]
+        [InlineData("SELECT MIN(s.a) FROM s3object s", @"{""_1"":5}")]
+        [InlineData("SELECT SUM(s.a) FROM s3object s", @"{""_1"":30}")]
         public void AggregateQueries(string queryString, string expectedRecord)
         {
             var query = ParseQuery(queryString);
