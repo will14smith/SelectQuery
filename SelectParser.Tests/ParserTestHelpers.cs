@@ -37,7 +37,7 @@ namespace SelectParser.Tests
 
         public static void AssertIdentifier(string expected, Expression expression)
         {
-            var identifier = Assert.IsType<Expression.Identifier>(expression);
+            var identifier = Assert.IsType<Expression.Identifier>(expression.Value);
             Assert.Equal(expected, identifier.Name);
         }
     }

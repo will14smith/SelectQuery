@@ -16,12 +16,11 @@ namespace SelectParser.Tests
             var result = Parse(Parser.BooleanOr, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Or, binary.Operator);
-            var left = Assert.IsType<Expression.Binary>(binary.Left);
+            var left = Assert.IsType<Expression.Binary>(binary.Left.Value);
             Assert.Equal(BinaryOperator.And, left.Operator);
-            var right = Assert.IsType<Expression.Identifier>(binary.Right);
-            Assert.Equal("c", right.Name);
+            AssertIdentifier("c", binary.Right);
         }
         [Fact]
         public void ParsingNopBooleanOr()
@@ -31,8 +30,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.BooleanOr, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -47,12 +45,11 @@ namespace SelectParser.Tests
             var result = Parse(Parser.BooleanAnd, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.And, binary.Operator);
-            var unary = Assert.IsType<Expression.Unary>(binary.Left);
+            var unary = Assert.IsType<Expression.Unary>(binary.Left.Value);
             Assert.Equal(UnaryOperator.Not, unary.Operator);
-            var identifier = Assert.IsType<Expression.Identifier>(binary.Right);
-            Assert.Equal("b", identifier.Name);
+            AssertIdentifier("b", binary.Right);
         }
         [Fact]
         public void ParsingNopBooleanAnd()
@@ -62,8 +59,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.BooleanAnd, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -78,9 +74,9 @@ namespace SelectParser.Tests
             var result = Parse(Parser.BooleanUnary, input);
 
             var expression = AssertSuccess(result);
-            var unary = Assert.IsType<Expression.Unary>(expression);
+            var unary = Assert.IsType<Expression.Unary>(expression.Value);
             Assert.Equal(UnaryOperator.Not, unary.Operator);
-            var binary = Assert.IsType<Expression.Binary>(unary.Expression);
+            var binary = Assert.IsType<Expression.Binary>(unary.Expression.Value);
             Assert.Equal(BinaryOperator.Equal, binary.Operator);
         }
         [Fact]
@@ -91,8 +87,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.BooleanUnary, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -107,12 +102,10 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Equality, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Equal, binary.Operator);
-            var left = Assert.IsType<Expression.Identifier>(binary.Left);
-            Assert.Equal("a", left.Name);
-            var right = Assert.IsType<Expression.Identifier>(binary.Right);
-            Assert.Equal("b", right.Name);
+            AssertIdentifier("a", binary.Left);
+            AssertIdentifier("b", binary.Right);
         }
         [Fact]
         public void ParsingNopEquality()
@@ -122,8 +115,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Equality, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -138,12 +130,10 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Comparative, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Lesser, binary.Operator);
-            var left = Assert.IsType<Expression.Identifier>(binary.Left);
-            Assert.Equal("a", left.Name);
-            var right = Assert.IsType<Expression.Identifier>(binary.Right);
-            Assert.Equal("b", right.Name);
+            AssertIdentifier("a", binary.Left);
+            AssertIdentifier("b", binary.Right);
         }
         [Fact]
         public void ParsingNopComparative()
@@ -153,8 +143,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Comparative, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -169,10 +158,9 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Pattern, input);
 
             var expression = AssertSuccess(result);
-            var like = Assert.IsType<Expression.Like>(expression);
-            var identifier = Assert.IsType<Expression.Identifier>(like.Expression);
-            Assert.Equal("test", identifier.Name);
-            var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern);
+            var like = Assert.IsType<Expression.Like>(expression.Value);
+            AssertIdentifier("test", like.Expression);
+            var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern.Value);
             Assert.Equal("%", pattern.Value);
             AssertNone(like.Escape);
         }
@@ -184,13 +172,12 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Pattern, input);
 
             var expression = AssertSuccess(result);
-            var like = Assert.IsType<Expression.Like>(expression);
-            var identifier = Assert.IsType<Expression.Identifier>(like.Expression);
-            Assert.Equal("test", identifier.Name);
-            var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern);
+            var like = Assert.IsType<Expression.Like>(expression.Value);
+            AssertIdentifier("test", like.Expression);
+            var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern.Value);
             Assert.Equal("%", pattern.Value);
             var escape = AssertSome(like.Escape);
-            var escapeValue = Assert.IsType<Expression.NumberLiteral>(escape);
+            var escapeValue = Assert.IsType<Expression.NumberLiteral>(escape.Value);
             Assert.Equal(1, escapeValue.Value);
         }
         [Fact]
@@ -201,8 +188,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Pattern, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -217,13 +203,12 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Containment, input);
 
             var expression = AssertSuccess(result);
-            var between = Assert.IsType<Expression.Between>(expression);
+            var between = Assert.IsType<Expression.Between>(expression.Value);
             Assert.False(between.Negate);
-            var identifier = Assert.IsType<Expression.Identifier>(between.Expression);
-            Assert.Equal("test", identifier.Name);
-            var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower);
+            AssertIdentifier("test", between.Expression);
+            var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower.Value);
             Assert.Equal(1, lower.Value);
-            Assert.IsType<Expression.Binary>(between.Upper);
+            Assert.IsType<Expression.Binary>(between.Upper.Value);
         }
         [Fact]
         public void ParsingNotContainment()
@@ -233,13 +218,12 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Containment, input);
 
             var expression = AssertSuccess(result);
-            var between = Assert.IsType<Expression.Between>(expression);
+            var between = Assert.IsType<Expression.Between>(expression.Value);
             Assert.True(between.Negate);
-            var identifier = Assert.IsType<Expression.Identifier>(between.Expression);
-            Assert.Equal("test", identifier.Name);
-            var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower);
+            AssertIdentifier("test", between.Expression);
+            var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower.Value);
             Assert.Equal(1, lower.Value);
-            Assert.IsType<Expression.Binary>(between.Upper);
+            Assert.IsType<Expression.Binary>(between.Upper.Value);
         }
         [Fact]
         public void ParsingNopContainment()
@@ -249,8 +233,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Containment, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -265,9 +248,8 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Presence, input);
 
             var expression = AssertSuccess(result);
-            var presence = Assert.IsType<Expression.Presence>(expression);
-            var identifier = Assert.IsType<Expression.Identifier>(presence.Expression);
-            Assert.Equal("test", identifier.Name);
+            var presence = Assert.IsType<Expression.Presence>(expression.Value);
+            AssertIdentifier("test", presence.Expression);
             Assert.False(presence.Negate);
         }
 
@@ -279,7 +261,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Presence, input);
 
             var expression = AssertSuccess(result);
-            var presence = Assert.IsType<Expression.Presence>(expression);
+            var presence = Assert.IsType<Expression.Presence>(expression.Value);
             Assert.True(presence.Negate);
         }
 
@@ -291,8 +273,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Presence, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -307,9 +288,8 @@ namespace SelectParser.Tests
             var result = Parse(Parser.IsNull, input);
 
             var expression = AssertSuccess(result);
-            var presence = Assert.IsType<Expression.IsNull>(expression);
-            var identifier = Assert.IsType<Expression.Identifier>(presence.Expression);
-            Assert.Equal("test", identifier.Name);
+            var presence = Assert.IsType<Expression.IsNull>(expression.Value);
+            AssertIdentifier("test", presence.Expression);
             Assert.False(presence.Negate);
         }
 
@@ -321,7 +301,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Presence, input);
 
             var expression = AssertSuccess(result);
-            var presence = Assert.IsType<Expression.IsNull>(expression);
+            var presence = Assert.IsType<Expression.IsNull>(expression.Value);
             Assert.True(presence.Negate);
         }
 
@@ -333,8 +313,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Presence, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -349,18 +328,17 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Membership, input);
 
             var expression = AssertSuccess(result);
-            var @in = Assert.IsType<Expression.In>(expression);
-            var identifier = Assert.IsType<Expression.Identifier>(@in.Expression);
-            Assert.Equal("test", identifier.Name);
+            var @in = Assert.IsType<Expression.In>(expression.Value);
+            AssertIdentifier("test", @in.Expression);
             Assert.Collection(@in.Matches,
                 match =>
                 {
-                    var num = Assert.IsType<Expression.NumberLiteral>(match);
+                    var num = Assert.IsType<Expression.NumberLiteral>(match.Value);
                     Assert.Equal(1, num.Value);
                 },
                 match =>
                 {
-                    var binary = Assert.IsType<Expression.Binary>(match);
+                    var binary = Assert.IsType<Expression.Binary>(match.Value);
                     Assert.Equal(BinaryOperator.Add, binary.Operator);
                 }
             );
@@ -373,8 +351,8 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Membership, input);
 
             var expression = AssertSuccess(result);
-            var @in = Assert.IsType<Expression.In>(expression);
-            Assert.IsType<Expression.Binary>(@in.Expression);
+            var @in = Assert.IsType<Expression.In>(expression.Value);
+            Assert.IsType<Expression.Binary>(@in.Expression.Value);
         }
         [Fact]
         public void ParsingNopMembership()
@@ -384,8 +362,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Membership, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -400,11 +377,10 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Additive, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Add, binary.Operator);
-            var identifier = Assert.IsType<Expression.Identifier>(binary.Left);
-            Assert.Equal("test", identifier.Name);
-            var number = Assert.IsType<Expression.NumberLiteral>(binary.Right);
+            AssertIdentifier("test", binary.Left);
+            var number = Assert.IsType<Expression.NumberLiteral>(binary.Right.Value);
             Assert.Equal(123, number.Value);
 
         }
@@ -416,9 +392,9 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Additive, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Add, binary.Operator);
-            var left = Assert.IsType<Expression.Binary>(binary.Left);
+            var left = Assert.IsType<Expression.Binary>(binary.Left.Value);
             Assert.Equal(BinaryOperator.Multiply, left.Operator);
         }
         [Fact]
@@ -429,8 +405,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Additive, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -445,11 +420,10 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Multiplicative, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Multiply, binary.Operator);
-            var identifier = Assert.IsType<Expression.Identifier>(binary.Left);
-            Assert.Equal("test", identifier.Name);
-            var number = Assert.IsType<Expression.NumberLiteral>(binary.Right);
+            AssertIdentifier("test", binary.Left);
+            var number = Assert.IsType<Expression.NumberLiteral>(binary.Right.Value);
             Assert.Equal(123, number.Value);
 
         }
@@ -461,9 +435,9 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Multiplicative, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Multiply, binary.Operator);
-            Assert.IsType<Expression.Unary>(binary.Left);
+            Assert.IsType<Expression.Unary>(binary.Left.Value);
         }
         [Fact]
         public void ParsingNopMultiplicative()
@@ -473,8 +447,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Multiplicative, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -489,10 +462,9 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Unary, input);
 
             var expression = AssertSuccess(result);
-            var negate = Assert.IsType<Expression.Unary>(expression);
+            var negate = Assert.IsType<Expression.Unary>(expression.Value);
             Assert.Equal(UnaryOperator.Negate, negate.Operator);
-            var identifier = Assert.IsType<Expression.Identifier>(negate.Expression);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", negate.Expression);
         }
         [Fact]
         public void ParsingNopNegate()
@@ -502,8 +474,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Unary, input);
 
             var select = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(select);
-            Assert.Equal("test", identifier.Name);
+            AssertIdentifier("test", select);
         }
 
         #endregion
@@ -518,7 +489,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(expression);
+            var identifier = Assert.IsType<Expression.Identifier>(expression.Value);
             Assert.Equal("Test", identifier.Name);
             Assert.False(identifier.CaseSensitive);
         }
@@ -530,7 +501,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.Identifier>(expression);
+            var identifier = Assert.IsType<Expression.Identifier>(expression.Value);
             Assert.Equal("Test", identifier.Name);
             Assert.True(identifier.CaseSensitive);
         }
@@ -542,7 +513,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var qualified = Assert.IsType<Expression.Qualified>(expression);
+            var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
             Assert.Equal("a", qualified.Qualification.Name);
             AssertIdentifier("b", qualified.Expression);
         }
@@ -554,7 +525,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var qualified = Assert.IsType<Expression.Qualified>(expression);
+            var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
             Assert.Equal("a", qualified.Qualification.Name);
             Assert.True(qualified.Qualification.CaseSensitive);
             AssertIdentifier("b", qualified.Expression);
@@ -567,7 +538,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var qualified = Assert.IsType<Expression.Qualified>(expression);
+            var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
             Assert.Equal("a", qualified.Qualification.Name);
             AssertIdentifier("*", qualified.Expression);
         }
@@ -579,7 +550,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.NumberLiteral>(expression);
+            var identifier = Assert.IsType<Expression.NumberLiteral>(expression.Value);
             Assert.Equal(123, identifier.Value);
         }
         [Fact]
@@ -590,7 +561,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.StringLiteral>(expression);
+            var identifier = Assert.IsType<Expression.StringLiteral>(expression.Value);
             Assert.Equal("test", identifier.Value);
         }
         [Fact]
@@ -601,7 +572,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var identifier = Assert.IsType<Expression.BooleanLiteral>(expression);
+            var identifier = Assert.IsType<Expression.BooleanLiteral>(expression.Value);
             Assert.True(identifier.Value);
         }
 
@@ -613,7 +584,7 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var binary = Assert.IsType<Expression.Binary>(expression);
+            var binary = Assert.IsType<Expression.Binary>(expression.Value);
             Assert.Equal(BinaryOperator.Or, binary.Operator);
         }
         

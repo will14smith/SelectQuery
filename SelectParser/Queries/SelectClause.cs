@@ -6,6 +6,8 @@ namespace SelectParser.Queries
     [GenerateOneOf]
     public partial class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
     {
+        public override string ToString() => Value.ToString();
+
         public class Star
         {
             public override string ToString()

@@ -8,10 +8,12 @@ namespace SelectParser.Queries
     [GenerateOneOf]
     public partial class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.IsNull, Expression.Presence, Expression.In, Expression.Like>
     {
+        public override string ToString() => Value.ToString();
+
         public class StringLiteral
         {
             public StringLiteral(string value) => Value = value;
-            public new string Value { get; }
+            public string Value { get; }
 
             public bool Equals(StringLiteral other)
             {
@@ -42,7 +44,7 @@ namespace SelectParser.Queries
         public class NumberLiteral
         {
             public NumberLiteral(decimal value) => Value = value;
-            public new decimal Value { get; }
+            public decimal Value { get; }
 
             public bool Equals(NumberLiteral other)
             {
@@ -69,7 +71,7 @@ namespace SelectParser.Queries
         public class BooleanLiteral
         {
             public BooleanLiteral(bool value) => Value = value;
-            public new bool Value { get; }
+            public bool Value { get; }
 
             public bool Equals(BooleanLiteral other)
             {
