@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System;
+using System.Linq;
 using OneOf.Types;
 using SelectParser.Queries;
 using Superpower;
@@ -30,6 +31,28 @@ namespace SelectParser
             Token.Sequence(SelectToken.As, SelectToken.Identifier).Select(x => ParseIdentifier(x[1]).Identifier)
                 .Or(Identifier.Select(x => x.Identifier));
 
+        #region function
+
+        private static readonly TokenListParser<SelectToken, Function> AvgFunction = SingleParameterFunction(SelectToken.Avg, x => new AggregateFunction.Average(x));
+        private static readonly TokenListParser<SelectToken, Function> CountFunction = Token.Sequence(SelectToken.Count, SelectToken.LeftBracket, SelectToken.Star, SelectToken.RightBracket).Select(_ => (Function) (AggregateFunction) new AggregateFunction.Count());
+        private static readonly TokenListParser<SelectToken, Function> MaxFunction = SingleParameterFunction(SelectToken.Max, x => new AggregateFunction.Max(x));
+        private static readonly TokenListParser<SelectToken, Function> MinFunction = SingleParameterFunction(SelectToken.Min, x => new AggregateFunction.Min(x));
+        private static readonly TokenListParser<SelectToken, Function> SumFunction = SingleParameterFunction(SelectToken.Sum, x => new AggregateFunction.Sum(x));
+
+        private static readonly TokenListParser<SelectToken, Function> AggregateFunction = AvgFunction.Or(CountFunction).Or(MaxFunction).Or(MinFunction).Or(SumFunction);
+        private static readonly TokenListParser<SelectToken, Function> Function = AggregateFunction;
+        private static readonly TokenListParser<SelectToken, Expression> FunctionExpression = Function.Select(x => (Expression) new Expression.FunctionExpression(x));
+
+        private static TokenListParser<SelectToken, Function> SingleParameterFunction(SelectToken nameToken, Func<Expression, AggregateFunction> constructor) => SingleParameterFunction(nameToken, x => (Function) constructor(x));
+        private static TokenListParser<SelectToken, Function> SingleParameterFunction(SelectToken nameToken, Func<Expression, Function> constructor) =>
+            from name in Token.EqualTo(nameToken)
+            from begin in Token.EqualTo(SelectToken.LeftBracket)
+            from expr in Parse.Ref(() => Expression)
+            from end in Token.EqualTo(SelectToken.RightBracket)
+            select constructor(expr);
+
+        #endregion
+        
         #region expression 
 
         private static readonly TokenListParser<SelectToken, Expression> QualifiedIdentifier =
@@ -59,6 +82,7 @@ namespace SelectParser
 
         public static readonly TokenListParser<SelectToken, Expression> Term =
             QualifiedIdentifier
+                .Or(FunctionExpression)
                 .Or(Number.Select(x => (Expression)new Expression.NumberLiteral(x)))
                 .Or(String.Select(x => (Expression)new Expression.StringLiteral(x)))
                 .Or(Boolean.Select(x => (Expression)new Expression.BooleanLiteral(x)))

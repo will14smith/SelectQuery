@@ -550,8 +550,9 @@ namespace SelectParser.Tests
             var result = Parse(Parser.Term, input);
 
             var expression = AssertSuccess(result);
-            var function = Assert.IsType<Expression.FunctionExpression>(expression);
-            var average = Assert.IsType<Function.Aggregate.Average>(function.Function);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+            var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
+            var average = Assert.IsType<AggregateFunction.Average>(aggregate.Value);
             AssertIdentifier("Value", average.Expression);
         }
         [Fact]
