@@ -8,7 +8,7 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="1.0.0" />
     <PackageReference Include="System.Linq.Async" Version="4.0.0" />
-    <PackageReference Include="OneOf" Version="2.1.150" />
+    <PackageReference Include="OneOf" Version="3.0.216" />
     <PackageReference Include="System.Reactive" Version="4.1.6" />
   </ItemGroup>
 

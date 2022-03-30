@@ -3,11 +3,10 @@ using OneOf;
 
 namespace SelectParser.Queries
 {
-    public abstract class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
+    [GenerateOneOf]
+    public partial class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
     {
-        public abstract override string ToString();
-
-        public class Star : SelectClause
+        public class Star
         {
             public override string ToString()
             {
@@ -15,7 +14,7 @@ namespace SelectParser.Queries
             }
         }
 
-        public class List : SelectClause
+        public class List
         {
             public List(IReadOnlyList<Column> columns)
             {

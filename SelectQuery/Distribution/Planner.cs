@@ -130,7 +130,7 @@ namespace SelectQuery.Distribution
             {
                 while (true)
                 {
-                    switch (expression)
+                    switch (expression.Value)
                     {
                         case Expression.Identifier identifier:
                             name = identifier.Name;

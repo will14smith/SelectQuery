@@ -5,11 +5,10 @@ using OneOf;
 
 namespace SelectParser.Queries
 {
-    public abstract class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.IsNull, Expression.Presence, Expression.In, Expression.Like>
+    [GenerateOneOf]
+    public partial class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.IsNull, Expression.Presence, Expression.In, Expression.Like>
     {
-        public abstract override string ToString();
-
-        public class StringLiteral : Expression
+        public class StringLiteral
         {
             public StringLiteral(string value) => Value = value;
             public new string Value { get; }
@@ -40,7 +39,7 @@ namespace SelectParser.Queries
                 return $"'{Value}'";
             }
         }
-        public class NumberLiteral : Expression
+        public class NumberLiteral
         {
             public NumberLiteral(decimal value) => Value = value;
             public new decimal Value { get; }
@@ -67,7 +66,7 @@ namespace SelectParser.Queries
                 return $"{Value}";
             }
         }
-        public class BooleanLiteral : Expression
+        public class BooleanLiteral
         {
             public BooleanLiteral(bool value) => Value = value;
             public new bool Value { get; }
@@ -95,7 +94,7 @@ namespace SelectParser.Queries
             }
         }
 
-        public class Identifier : Expression
+        public class Identifier
         {
             public Identifier(string name, bool caseSensitive)
             {
@@ -143,7 +142,7 @@ namespace SelectParser.Queries
                 return Name;
             }
         }
-        public class Qualified : Expression
+        public class Qualified
         {
             public Qualified(Identifier qualification, Expression expression)
             {
@@ -178,7 +177,7 @@ namespace SelectParser.Queries
             }
         }
 
-        public class Unary : Expression
+        public class Unary
         {
             public Unary(UnaryOperator @operator, Expression expression)
             {
@@ -219,7 +218,7 @@ namespace SelectParser.Queries
                 return $"({op}{Expression})";
             }
         }
-        public class Binary : Expression
+        public class Binary
         {
             public Binary(BinaryOperator @operator, Expression left, Expression right)
             {
@@ -275,7 +274,7 @@ namespace SelectParser.Queries
                 return $"({Left} {op} {Right})";
             }
         }
-        public class Between : Expression
+        public class Between
         {
             public Between(bool negate, Expression expression, Expression lower, Expression upper)
             {
@@ -319,7 +318,7 @@ namespace SelectParser.Queries
             }
         }
 
-        public class IsNull : Expression
+        public class IsNull
         {
             public IsNull(Expression expression, bool negate)
             {
@@ -356,7 +355,7 @@ namespace SelectParser.Queries
                 return $"{Expression} IS {(Negate ? "NOT " : "")}NULL";
             }
         }
-        public class Presence : Expression
+        public class Presence
         {
             public Presence(Expression expression, bool negate)
             {
@@ -393,7 +392,7 @@ namespace SelectParser.Queries
                 return $"{Expression} IS {(Negate ? "" : "NOT ")}MISSING";
             }
         }
-        public class In : Expression
+        public class In
         {
             public In(Expression expression, IReadOnlyList<Expression> matches)
             {
@@ -430,7 +429,7 @@ namespace SelectParser.Queries
                 return $"{Expression} IN ({string.Join(", ", Matches)})";
             }
         }
-        public class Like : Expression
+        public class Like
         {
             public Like(Expression expression, Expression pattern, Option<Expression> escape)
             {

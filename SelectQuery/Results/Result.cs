@@ -4,9 +4,10 @@ using OneOf;
 
 namespace SelectQuery.Results
 {
-    public abstract class Result : OneOfBase<Result.Direct, Result.Serialized, Result.InDirect>
+    [GenerateOneOf]
+    public partial class Result : OneOfBase<Result.Direct, Result.Serialized, Result.InDirect>
     {
-        public class Direct : Result
+        public class Direct
         {
             public Direct(IReadOnlyList<ResultRow> rows)
             {
@@ -16,7 +17,7 @@ namespace SelectQuery.Results
             public IReadOnlyList<ResultRow> Rows { get; }
         }
 
-        public class Serialized : Result
+        public class Serialized
         {
             public Serialized(byte[] data)
             {
@@ -26,7 +27,7 @@ namespace SelectQuery.Results
             public byte[] Data { get; }
         }
 
-        public class InDirect : Result
+        public class InDirect
         {
             public InDirect(Uri location)
             {

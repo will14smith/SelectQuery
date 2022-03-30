@@ -32,7 +32,7 @@ namespace SelectQuery
 
             static object OrderSelector(Expression expression, ResultRow row)
             {
-                if (!(expression is Expression.Identifier identifier))
+                if (!(expression.Value is Expression.Identifier identifier))
                 {
                     throw new NotSupportedException("Worker can't execute expressions, this should have been projected for the underlying query to handle");
                 }

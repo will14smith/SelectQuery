@@ -49,7 +49,7 @@ namespace SelectQuery.Tests.Distribution
                 CreateRow(("id", 1), ("name", "b")),
                 CreateRow(("id", 3), ("name", "c")),
             };
-            var workerResults = new[]
+            var workerResults = new Result[]
             {
                 new Result.Direct(new [] { expectedResults[1] }),
                 new Result.Direct(new [] { expectedResults[0], expectedResults[2] }),
@@ -72,7 +72,7 @@ namespace SelectQuery.Tests.Distribution
                 CreateRow(("id", 2), ("name", "a")),
                 CreateRow(("id", 3), ("name", "c")),
             };
-            var workerResults = new[]
+            var workerResults = new Result[]
             {
                 new Result.Direct(new [] { results[0] }),
                 new Result.Direct(new [] { results[1], results[2] }),
@@ -90,14 +90,14 @@ namespace SelectQuery.Tests.Distribution
         [Fact]
         public async Task Distributor_ShouldFilterOutInternalColumns()
         {
-            var workerResults = new[]
+            var workerResults = new Result[]
             {
                 new Result.Direct(new []
                 {
                     CreateRow(("id", 2), ("__internal__order_0", "a")),
                 })
             };
-            var expectedResults = new[]
+            var expectedResults = new []
             {
                 CreateRow(("id", 2)),
             };

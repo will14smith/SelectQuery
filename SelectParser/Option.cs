@@ -6,21 +6,21 @@ namespace SelectParser
 {
     public class Option<T> : OneOfBase<T, None>
     {
-        private Option() : base(1) { }
-        private Option(T value) : base(0, value) { }
+        private Option() : base(new None()) { }
+        private Option(T value) : base(value) { }
 
-        public static implicit operator Option<T>(T t) => new Option<T>(t);
-        public static implicit operator Option<T>(None t) => new Option<T>();
+        public static implicit operator Option<T>(T t) => new(t);
+        public static implicit operator Option<T>(None _) => new();
 
         public bool IsSome => IsT0;
         public bool IsNone => IsT1;
 
-        public Option<U> Select<U>(Func<T, U> mapFn)
+        public Option<TOut> Select<TOut>(Func<T, TOut> mapFn)
         {
-            return Match(val => new Option<U>(mapFn(val)), none => none);
+            return Match(val => new Option<TOut>(mapFn(val)), none => none);
         }
 
-        public Option<U> SelectMany<U>(Func<T, Option<U>> mapFn)
+        public Option<TOut> SelectMany<TOut>(Func<T, Option<TOut>> mapFn)
         {
             return Match(mapFn, none => none);
         }

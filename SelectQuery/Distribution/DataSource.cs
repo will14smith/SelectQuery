@@ -4,9 +4,10 @@ using OneOf;
 
 namespace SelectQuery.Distribution
 {
-    public abstract class DataSource : OneOfBase<DataSource.List, DataSource.Prefix>
+    [GenerateOneOf]
+    public partial class DataSource : OneOfBase<DataSource.List, DataSource.Prefix>
     {
-        public class List : DataSource
+        public class List
         {
             public List(IReadOnlyList<Uri> locations)
             {
@@ -16,7 +17,7 @@ namespace SelectQuery.Distribution
             public IReadOnlyList<Uri> Locations { get; }
         }
 
-        public class Prefix : DataSource
+        public class Prefix
         {
             public Prefix(Uri baseLocation)
             {
