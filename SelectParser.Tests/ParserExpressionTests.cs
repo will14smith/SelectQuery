@@ -480,7 +480,7 @@ namespace SelectParser.Tests
         #endregion
 
         #region Term
-
+        
         [Fact]
         public void ParsingIdentifier()
         {
@@ -541,6 +541,18 @@ namespace SelectParser.Tests
             var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
             Assert.Equal("a", qualified.Qualification.Name);
             AssertIdentifier("*", qualified.Expression);
+        }
+        [Fact]
+        public void ParsingFunction()
+        {
+            var input = "AVG(Value)";
+
+            var result = Parse(Parser.Term, input);
+
+            var expression = AssertSuccess(result);
+            var function = Assert.IsType<Expression.FunctionExpression>(expression);
+            var average = Assert.IsType<Function.Aggregate.Average>(function.Function);
+            AssertIdentifier("Value", average.Expression);
         }
         [Fact]
         public void ParsingNumberLiteral()

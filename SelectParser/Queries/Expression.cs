@@ -6,7 +6,7 @@ using OneOf;
 namespace SelectParser.Queries
 {
     [GenerateOneOf]
-    public partial class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.Unary, Expression.Binary, Expression.Between, Expression.IsNull, Expression.Presence, Expression.In, Expression.Like>
+    public partial class Expression : OneOfBase<Expression.StringLiteral, Expression.NumberLiteral, Expression.BooleanLiteral, Expression.Identifier, Expression.Qualified, Expression.FunctionExpression, Expression.Unary, Expression.Binary, Expression.Between, Expression.IsNull, Expression.Presence, Expression.In, Expression.Like>
     {
         public override string ToString() => Value.ToString();
 
@@ -177,6 +177,22 @@ namespace SelectParser.Queries
             {
                 return $"{Qualification}.{Expression}";
             }
+        }
+
+        public class FunctionExpression
+        {
+            public Function Function { get; }
+
+            public FunctionExpression(Function function)
+            {
+                Function = function;
+            }
+
+            protected bool Equals(FunctionExpression other) => base.Equals(other) && Function.Equals(other.Function);
+            public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is FunctionExpression other && Equals(other);
+            public override int GetHashCode() { unchecked { return (base.GetHashCode() * 397) ^ Function.GetHashCode(); } }
+
+            public override string ToString() => Function.ToString();
         }
 
         public class Unary
