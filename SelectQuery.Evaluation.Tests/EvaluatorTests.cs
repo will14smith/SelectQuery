@@ -67,6 +67,20 @@ namespace SelectQuery.Evaluation.Tests
             var response = Evaluate(query, records);
 
             Assert.Equal(expectedCount, response.Count(x => x == '\n'));
+        }   
+        
+        [Theory]
+
+        [InlineData("SELECT 1 FROM s3object s LIMIT 2", new [] { @"{""a"":1}" }, 1)]
+        [InlineData("SELECT 1 FROM s3object s LIMIT 2", new [] { @"{""a"":1}", @"{""a"":1}", @"{""a"":1}", @"{""a"":1}" }, 2)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1 LIMIT 2", new [] { @"{""a"":2}", @"{""a"":1}", @"{""a"":1}" }, 2)]
+        public void LimitQueries(string queryString, string[] records, int expectedCount)
+        {
+            var query = ParseQuery(queryString);
+
+            var response = Evaluate(query, records);
+
+            Assert.Equal(expectedCount, response.Count(x => x == '\n'));
         }
 
         [Theory]
@@ -74,6 +88,7 @@ namespace SelectQuery.Evaluation.Tests
         [InlineData("SELECT AVG(s.a) FROM s3object s", true, @"{""_1"":10}")]
         [InlineData("SELECT AVG(s.a) FROM s3object s", false, @"{""_1"":null}")]
         [InlineData("SELECT COUNT(*) FROM s3object s", true, @"{""_1"":5}")]
+        [InlineData("SELECT COUNT(*) FROM s3object s LIMIT 1", true, @"{""_1"":1}")]
         [InlineData("SELECT COUNT(*) FROM s3object s", false, @"{""_1"":0}")]
         [InlineData("SELECT COUNT(s.a) FROM s3object s", true, @"{""_1"":3}")]
         [InlineData("SELECT COUNT(s.a) FROM s3object s", false, @"{""_1"":0}")]

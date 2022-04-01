@@ -35,7 +35,16 @@ namespace SelectQuery.Evaluation
             }
             else
             {
-                while (ProcessRecord(ref reader, ref writer)) { }
+                var recordsProcessed = 0;
+                var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
+
+                while (ProcessRecord(ref reader, ref writer, ref recordsProcessed))
+                {
+                    if (recordsProcessed >= limit)
+                    {
+                        break;
+                    }
+                }
             }
 
             return writer.ToUtf8ByteArray();
@@ -44,7 +53,10 @@ namespace SelectQuery.Evaluation
         private void ProcessAggregate(ref JsonReader reader, ref JsonWriter writer)
         {
             var state = new AggregateProcessor(_query);
-
+            
+            var recordsProcessed = 0;
+            var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
+            
             while (true)
             {
                 var readResult = ReadRecord(ref reader);
@@ -56,6 +68,11 @@ namespace SelectQuery.Evaluation
                 var record = readResult.AsT0;
                 if (TestPredicate(record))
                 {
+                    if (recordsProcessed++ >= limit)
+                    {
+                        break;
+                    }
+                    
                     state.ProcessRecord(record);
                 }
             }
@@ -64,7 +81,7 @@ namespace SelectQuery.Evaluation
             writer.WriteRaw((byte) '\n');
         }
         
-        private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer)
+        private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer, ref int recordsProcessed)
         {
             var readResult = ReadRecord(ref reader);
             if (readResult.IsNone)
@@ -75,6 +92,7 @@ namespace SelectQuery.Evaluation
             var record = readResult.AsT0;
             if (TestPredicate(record))
             {
+                recordsProcessed++;
                 _recordWriter.Write(ref writer, record);
                 writer.WriteRaw((byte) '\n');
             }
