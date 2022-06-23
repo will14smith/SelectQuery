@@ -111,6 +111,29 @@ namespace SelectQuery.Evaluation.Tests
             AssertResponse(expectedResponse, response);
         }
         
+        [Theory]
+
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE 'a'", 1)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE '_a'", 1)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE 'a_'", 1)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE '%a'", 3)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE 'a%'", 3)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE '%a%'", 5)]
+        [InlineData("SELECT 1 FROM s3object s WHERE s.a LIKE '%x^%' ESCAPE '^'", 2)]
+        public void LikeQueries(string queryString, int expectedCount)
+        {
+            var records = new[]
+            {
+                "", "a", "ba", "ab", "abb", "bba", "x", "x%", "cx", "cx%"
+            }.Select(x => $@"{{""a"":""{x}""}}").ToArray();
+            
+            var query = ParseQuery(queryString);
+
+            var response = Evaluate(query, records);
+
+            Assert.Equal(expectedCount, response.Count(x => x == '\n'));
+        }
+        
         private static Query ParseQuery(string query)
         {
             var tokens = new SelectTokenizer().Tokenize(query);
