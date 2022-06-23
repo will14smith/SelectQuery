@@ -188,7 +188,38 @@ namespace SelectQuery.Evaluation
 
         private bool EvaluateLike(Expression.Like like, object obj)
         {
-            throw new NotImplementedException();
+            var pattern = EvaluateToString(like.Pattern, obj);
+            var escape = like.Escape.SelectMany(x => EvaluateToString(x, obj));
+            var value = EvaluateToString(like.Expression, obj);
+
+            if (pattern.IsNone || value.IsNone)
+            {
+                return false;
+            }
+
+            if (escape.IsSome && escape.AsT0.Length != 1)
+            {
+                throw new InvalidOperationException($"Escape should be a single character, was '{escape.AsT0}'");
+            }
+            var escapeChar = escape.Select(x => x[0]);
+            
+            return LikeMatcher.IsMatch(pattern.AsT0, escapeChar, value.AsT0);
+        }
+
+        private Option<string> EvaluateToString(Expression expr, object obj)
+        {
+            var valueObj = Evaluate<object>(expr, obj);
+            if (valueObj.IsNone)
+            {
+                return new None();
+            }
+
+            if (valueObj.Value is not string valueStr)
+            {
+                throw new InvalidCastException($"'{expr}' did not evaluate to a string");
+            }
+
+            return valueStr;
         }
     }
 

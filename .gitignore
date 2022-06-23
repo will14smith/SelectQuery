@@ -147,6 +147,9 @@ _TeamCity*
 *.coverage
 *.coveragexml
 
+# Rider
+.idea/
+
 # NCrunch
 _NCrunch_*
 .*crunch*.local.xml
