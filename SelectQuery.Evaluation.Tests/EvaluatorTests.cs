@@ -1,5 +1,7 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using SelectParser;
 using SelectParser.Queries;
 using Xunit;
@@ -136,8 +138,8 @@ public class EvaluatorTests
         
     private static Query ParseQuery(string query)
     {
-        var tokens = new SelectTokenizer().Tokenize(query);
-        return Parser.Query(tokens).Value;
+        var result = Parser.Parse(query);
+        return result.Value;
     }
 
     private static byte[] Evaluate(Query query, string[] data)
