@@ -73,8 +73,11 @@ namespace SelectParser
                 .Select(BuildQualified);
         private static Expression BuildQualified(Expression.Identifier[] identifiers)
         {
-            if (identifiers.Length == 0) return null;
-            if (identifiers.Length == 1) return identifiers[0];
+            switch (identifiers.Length)
+            {
+                case 0: throw new InvalidOperationException("Cannot build a qualified expression from no identifiers");
+                case 1: return identifiers[0];
+            }
 
             Expression result = identifiers[identifiers.Length - 1];
             for (var i = identifiers.Length - 2; i >= 0; i--)
