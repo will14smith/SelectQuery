@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using JetBrains.Annotations;
 using OneOf.Types;
 using SelectParser.Queries;
 using Superpower;
@@ -67,7 +68,7 @@ public class Parser
 
     private static readonly TokenListParser<SelectToken, Expression> QualifiedIdentifier =
         Identifier
-            .Or(Token.EqualTo(SelectToken.Star).Select(x => ("*", false)))
+            .Or(Token.EqualTo(SelectToken.Star).Select(_ => ("*", false)))
             .Select(x => new Expression.Identifier(x.Item1, x.Item2))
             .AtLeastOnceDelimitedBy(Token.EqualTo(SelectToken.Dot))
             .Select(BuildQualified);
@@ -272,7 +273,7 @@ public class Parser
         from alias in Alias.Select(x => (Option<string>)x).OptionalOrDefault(new None())
         select new Column(expr, alias);
     private static readonly TokenListParser<SelectToken, SelectClause> ColumnsStar =
-        Token.EqualTo(SelectToken.Star).Select(x => (SelectClause)new SelectClause.Star());
+        Token.EqualTo(SelectToken.Star).Select(_ => (SelectClause)new SelectClause.Star());
     private static readonly TokenListParser<SelectToken, SelectClause> ColumnsList =
         Superpower.Parse.Chain(Token.EqualTo(SelectToken.Comma), Column.Select(x => new SelectClause.List(new[] { x })), CombineColumnLists)
             .Select(x => (SelectClause)x);
@@ -334,6 +335,16 @@ public class Parser
         from order in OrderByClause.Select(x => (Option<OrderClause>)x).OptionalOrDefault(new None())
         from limit in LimitClause.Select(x => (Option<LimitClause>)x).OptionalOrDefault(new None())
         select new Query(@select, @from, @where, order, limit);
+
+    [PublicAPI]
+    public static TokenListParserResult<SelectToken, Query> Parse(string input)
+    {
+        var tokenizer = new SelectTokenizer();
+        var tokens = tokenizer.Tokenize(input);
+        return Parse(tokens);
+    }
+    [PublicAPI]
+    public static TokenListParserResult<SelectToken, Query> Parse(TokenList<SelectToken> input) => Query(input);
 
     private static (string Identifier, bool CaseSensitive) ParseIdentifier(Token<SelectToken> token)
     {
