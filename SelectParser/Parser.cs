@@ -119,6 +119,8 @@ namespace SelectParser
                 SelectToken.Star => BinaryOperator.Multiply,
                 SelectToken.Divide => BinaryOperator.Divide,
                 SelectToken.Modulo => BinaryOperator.Modulo,
+                
+                _ => throw new InvalidOperationException("Operation should be a multiplicative token")
             };
 
             return new Expression.Binary(operation, left, right);
@@ -136,6 +138,8 @@ namespace SelectParser
             {
                 SelectToken.Add => BinaryOperator.Add,
                 SelectToken.Negate => BinaryOperator.Subtract,
+                
+                _ => throw new InvalidOperationException("Operation should be a additive token")
             };
 
             return new Expression.Binary(operation, left, right);
@@ -209,6 +213,8 @@ namespace SelectParser
             SelectToken.Greater => BinaryOperator.Greater,
             SelectToken.LesserOrEqual => BinaryOperator.LesserOrEqual,
             SelectToken.GreaterOrEqual => BinaryOperator.GreaterOrEqual,
+            
+            _ => throw new InvalidOperationException("Operation should be a comparative token")
         };
 
         public static readonly TokenListParser<SelectToken, Expression> Equality =
@@ -223,6 +229,8 @@ namespace SelectParser
             {
                 SelectToken.Equal => BinaryOperator.Equal,
                 SelectToken.NotEqual => BinaryOperator.NotEqual,
+                
+                _ => throw new InvalidOperationException("Operation should be a equality token")
             };
 
             return new Expression.Binary(operation, left, right);

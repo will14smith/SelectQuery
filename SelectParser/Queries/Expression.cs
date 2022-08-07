@@ -229,7 +229,9 @@ namespace SelectParser.Queries
                 var op = Operator switch
                 {
                     UnaryOperator.Not => "!",
-                    UnaryOperator.Negate => "-"
+                    UnaryOperator.Negate => "-",
+                    
+                    _ => throw new ArgumentOutOfRangeException(nameof(Operator))
                 };
 
                 // TODO precedence
@@ -286,6 +288,8 @@ namespace SelectParser.Queries
                     BinaryOperator.Multiply => "*",
                     BinaryOperator.Divide => "/",
                     BinaryOperator.Modulo => "%",
+                    
+                    _ => throw new ArgumentOutOfRangeException(nameof(Operator))
                 };
 
                 // TODO precedence
