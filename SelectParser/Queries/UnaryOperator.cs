@@ -1,8 +1,7 @@
-﻿namespace SelectParser.Queries
+﻿namespace SelectParser.Queries;
+
+public enum UnaryOperator
 {
-    public enum UnaryOperator
-    {
-        Not,
-        Negate
-    }
+    Not,
+    Negate
 }

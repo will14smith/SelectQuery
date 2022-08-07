@@ -1,34 +1,33 @@
 ﻿using System.Collections.Generic;
 using OneOf;
 
-namespace SelectParser.Queries
-{
-    [GenerateOneOf]
-    public partial class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
-    {
-        public override string ToString() => Value.ToString();
+namespace SelectParser.Queries;
 
-        public class Star
+[GenerateOneOf]
+public partial class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
+{
+    public override string ToString() => Value.ToString();
+
+    public class Star
+    {
+        public override string ToString()
         {
-            public override string ToString()
-            {
-                return "SELECT *";
-            }
+            return "SELECT *";
+        }
+    }
+
+    public class List
+    {
+        public List(IReadOnlyList<Column> columns)
+        {
+            Columns = columns;
         }
 
-        public class List
+        public IReadOnlyList<Column> Columns { get; }
+
+        public override string ToString()
         {
-            public List(IReadOnlyList<Column> columns)
-            {
-                Columns = columns;
-            }
-
-            public IReadOnlyList<Column> Columns { get; }
-
-            public override string ToString()
-            {
-                return $"SELECT {string.Join(", ", Columns)}";
-            }
+            return $"SELECT {string.Join(", ", Columns)}";
         }
     }
 }

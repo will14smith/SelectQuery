@@ -1,17 +1,16 @@
-﻿namespace SelectParser.Queries
+﻿namespace SelectParser.Queries;
+
+public class WhereClause
 {
-    public class WhereClause
+    public WhereClause(Expression condition)
     {
-        public WhereClause(Expression condition)
-        {
-            Condition = condition;
-        }
+        Condition = condition;
+    }
 
-        public Expression Condition { get; }
+    public Expression Condition { get; }
 
-        public override string ToString()
-        {
-            return $"WHERE {Condition}";
-        }
+    public override string ToString()
+    {
+        return $"WHERE {Condition}";
     }
 }

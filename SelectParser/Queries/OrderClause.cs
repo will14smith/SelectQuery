@@ -1,21 +1,20 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace SelectParser.Queries
+namespace SelectParser.Queries;
+
+public class OrderClause
 {
-    public class OrderClause
+    public OrderClause(IReadOnlyList<(Expression Expression, OrderDirection Direction)> columns)
     {
-        public OrderClause(IReadOnlyList<(Expression Expression, OrderDirection Direction)> columns)
-        {
-            Columns = columns;
-        }
+        Columns = columns;
+    }
 
-        public IReadOnlyList<(Expression Expression, OrderDirection Direction)> Columns { get; }
+    public IReadOnlyList<(Expression Expression, OrderDirection Direction)> Columns { get; }
 
-        public override string ToString()
-        {
-            var columns = Columns.Select(x => $"{x.Expression}{(x.Direction == OrderDirection.Descending ? " DESC" : "")}");
-            return $"ORDER BY {string.Join(", ", columns)}";
-        }
+    public override string ToString()
+    {
+        var columns = Columns.Select(x => $"{x.Expression}{(x.Direction == OrderDirection.Descending ? " DESC" : "")}");
+        return $"ORDER BY {string.Join(", ", columns)}";
     }
 }

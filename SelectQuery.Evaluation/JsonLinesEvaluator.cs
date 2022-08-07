@@ -4,118 +4,117 @@ using SelectParser.Queries;
 using Utf8Json;
 using Utf8Json.Resolvers;
 
-namespace SelectQuery.Evaluation
+namespace SelectQuery.Evaluation;
+
+public class JsonLinesEvaluator
 {
-    public class JsonLinesEvaluator
+    private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
+    private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
+
+    private readonly Query _query;
+    private readonly JsonRecordWriter _recordWriter;
+
+    public JsonLinesEvaluator(Query query)
     {
-        private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-        private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
-
-        private readonly Query _query;
-        private readonly JsonRecordWriter _recordWriter;
-
-        public JsonLinesEvaluator(Query query)
-        {
-            var validator = new QueryValidator();
-            validator.Validate(query);
-            validator.ThrowIfErrors();
+        var validator = new QueryValidator();
+        validator.Validate(query);
+        validator.ThrowIfErrors();
             
-            _query = query;
-            _recordWriter = new JsonRecordWriter(query.From, query.Select);
-        }
+        _query = query;
+        _recordWriter = new JsonRecordWriter(query.From, query.Select);
+    }
 
-        public byte[] Run(byte[] file)
+    public byte[] Run(byte[] file)
+    {
+        var reader = new JsonReader(file);
+        var writer = new JsonWriter();
+
+        if (QueryValidator.IsAggregateQuery(_query))
         {
-            var reader = new JsonReader(file);
-            var writer = new JsonWriter();
-
-            if (QueryValidator.IsAggregateQuery(_query))
-            {
-                ProcessAggregate(ref reader, ref writer);
-            }
-            else
-            {
-                var recordsProcessed = 0;
-                var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
-
-                while (ProcessRecord(ref reader, ref writer, ref recordsProcessed))
-                {
-                    if (recordsProcessed >= limit)
-                    {
-                        break;
-                    }
-                }
-            }
-
-            return writer.ToUtf8ByteArray();
+            ProcessAggregate(ref reader, ref writer);
         }
-        
-        private void ProcessAggregate(ref JsonReader reader, ref JsonWriter writer)
+        else
         {
-            var state = new AggregateProcessor(_query);
-            
             var recordsProcessed = 0;
             var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
-            
-            while (true)
+
+            while (ProcessRecord(ref reader, ref writer, ref recordsProcessed))
             {
-                var readResult = ReadRecord(ref reader);
-                if (readResult.IsNone)
+                if (recordsProcessed >= limit)
                 {
                     break;
                 }
-
-                var record = readResult.AsT0;
-                if (TestPredicate(record))
-                {
-                    if (recordsProcessed++ >= limit)
-                    {
-                        break;
-                    }
-                    
-                    state.ProcessRecord(record);
-                }
             }
-
-            state.Write(ref writer);
-            writer.WriteRaw((byte) '\n');
         }
+
+        return writer.ToUtf8ByteArray();
+    }
         
-        private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer, ref int recordsProcessed)
+    private void ProcessAggregate(ref JsonReader reader, ref JsonWriter writer)
+    {
+        var state = new AggregateProcessor(_query);
+            
+        var recordsProcessed = 0;
+        var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
+            
+        while (true)
         {
             var readResult = ReadRecord(ref reader);
             if (readResult.IsNone)
             {
-                return false;
+                break;
             }
 
             var record = readResult.AsT0;
             if (TestPredicate(record))
             {
-                recordsProcessed++;
-                _recordWriter.Write(ref writer, record);
-                writer.WriteRaw((byte) '\n');
+                if (recordsProcessed++ >= limit)
+                {
+                    break;
+                }
+                    
+                state.ProcessRecord(record);
             }
-
-            return true;
         }
 
-        private Option<object> ReadRecord(ref JsonReader reader)
+        state.Write(ref writer);
+        writer.WriteRaw((byte) '\n');
+    }
+        
+    private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer, ref int recordsProcessed)
+    {
+        var readResult = ReadRecord(ref reader);
+        if (readResult.IsNone)
         {
-            reader.SkipWhiteSpace();
-            if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
-            {
-                return new None();
-            }
-
-            return Formatter.Deserialize(ref reader, StandardResolver.Default);
+            return false;
         }
 
-        private bool TestPredicate(object record)
+        var record = readResult.AsT0;
+        if (TestPredicate(record))
         {
-            var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
-
-            return wherePassed.IsSome && wherePassed.AsT0;
+            recordsProcessed++;
+            _recordWriter.Write(ref writer, record);
+            writer.WriteRaw((byte) '\n');
         }
+
+        return true;
+    }
+
+    private Option<object> ReadRecord(ref JsonReader reader)
+    {
+        reader.SkipWhiteSpace();
+        if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
+        {
+            return new None();
+        }
+
+        return Formatter.Deserialize(ref reader, StandardResolver.Default);
+    }
+
+    private bool TestPredicate(object record)
+    {
+        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
+
+        return wherePassed.IsSome && wherePassed.AsT0;
     }
 }
