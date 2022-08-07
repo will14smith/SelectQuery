@@ -1,60 +1,59 @@
-﻿namespace SelectParser
+﻿namespace SelectParser;
+
+public enum SelectToken
 {
-    public enum SelectToken
-    {
-        None,
-        Identifier,
-        // literals
-        StringLiteral,
-        NumberLiteral,
-        BooleanLiteral,
-        // keywords
-        Select,
-        As,
-        From,
-        Where,
-        Order,
-        By,
-        Limit,
-        Offset,
-        Asc,
-        Desc,
-        Is,
-        Missing,
-        Null,
-        // functions
-        Avg,
-        Count,
-        Max,
-        Min,
-        Sum,
-        // operators
-        Dot,
-        Comma,
-        LeftBracket,
-        RightBracket,
-        Star,
+    None,
+    Identifier,
+    // literals
+    StringLiteral,
+    NumberLiteral,
+    BooleanLiteral,
+    // keywords
+    Select,
+    As,
+    From,
+    Where,
+    Order,
+    By,
+    Limit,
+    Offset,
+    Asc,
+    Desc,
+    Is,
+    Missing,
+    Null,
+    // functions
+    Avg,
+    Count,
+    Max,
+    Min,
+    Sum,
+    // operators
+    Dot,
+    Comma,
+    LeftBracket,
+    RightBracket,
+    Star,
 
-        Not,
-        Negate,
+    Not,
+    Negate,
 
-        And,
-        Or,
+    And,
+    Or,
 
-        Lesser,
-        Greater,
-        LesserOrEqual,
-        GreaterOrEqual,
-        Equal,
-        NotEqual,
+    Lesser,
+    Greater,
+    LesserOrEqual,
+    GreaterOrEqual,
+    Equal,
+    NotEqual,
 
-        Add,
-        Divide,
-        Modulo,
+    Add,
+    Divide,
+    Modulo,
 
-        Between,
-        In,
-        Like,
-        Escape,
-    }
+    Between,
+    In,
+    Like,
+    Escape,
 }

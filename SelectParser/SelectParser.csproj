@@ -2,12 +2,14 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <LangVersion>latest</LangVersion>
     <RepositoryUrl>https://github.com/will14smith/SelectQuery</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" PrivateAssets="All" />
     <PackageReference Include="OneOf" Version="3.0.216" />
     <PackageReference Include="OneOf.Extended" Version="3.0.216" />
     <PackageReference Include="OneOf.SourceGenerator" Version="3.0.216" />

@@ -1,21 +1,20 @@
-﻿namespace SelectParser.Queries
+﻿namespace SelectParser.Queries;
+
+public enum BinaryOperator
 {
-    public enum BinaryOperator
-    {
-        And,
-        Or,
+    And,
+    Or,
 
-        Lesser,
-        Greater,
-        LesserOrEqual,
-        GreaterOrEqual,
-        Equal,
-        NotEqual,
+    Lesser,
+    Greater,
+    LesserOrEqual,
+    GreaterOrEqual,
+    Equal,
+    NotEqual,
 
-        Add,
-        Subtract,
-        Multiply,
-        Divide,
-        Modulo,
-    }
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Modulo,
 }

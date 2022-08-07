@@ -1,19 +1,18 @@
-﻿namespace SelectParser.Queries
+﻿namespace SelectParser.Queries;
+
+public class LimitClause
 {
-    public class LimitClause
+    public LimitClause(int limit)
     {
-        public LimitClause(int limit)
-        {
-            Limit = limit;
-        }
+        Limit = limit;
+    }
 
-        public int Limit { get; }
-        // TODO add key/sort based offsetting
+    public int Limit { get; }
+    // TODO add key/sort based offsetting
 
 
-        public override string ToString()
-        {
-            return $"LIMIT {Limit}";
-        }
+    public override string ToString()
+    {
+        return $"LIMIT {Limit}";
     }
 }
