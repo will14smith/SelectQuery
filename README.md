@@ -10,7 +10,8 @@ The library is not 100% feature complete with S3 Select but it supports a decent
 - Column projection (e.g. `SELECT s.Id, s.Name.First as N ...`)
 - Basic filtering (e.g. `WHERE s.Id > 0 AND s.Name.First IS NOT NULL`)
 - Like filtering (e.g. `WHERE s.Name.First LIKE 'J%'`)
-- Aggregation (e.g. `SELECT AVG(s.Doors) ...`)
+- Aggregation Functions (e.g. `SELECT AVG(s.Doors) ...`)
+- Scalar Functions (e.g. `SELECT LOWER(s.Name.First) ...`)
 - Limits (e.g. `LIMIT 10`)
 
 ## Usage
