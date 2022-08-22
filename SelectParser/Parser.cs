@@ -40,6 +40,8 @@ public class Parser
     private static readonly TokenListParser<SelectToken, Function> MinFunction = SingleParameterFunction(SelectToken.Min, x => new AggregateFunction.Min(x));
     private static readonly TokenListParser<SelectToken, Function> SumFunction = SingleParameterFunction(SelectToken.Sum, x => new AggregateFunction.Sum(x));
 
+    private static readonly TokenListParser<SelectToken, Function> AggregateFunction = AvgFunction.Or(CountFunction).Or(MaxFunction).Or(MinFunction).Or(SumFunction);
+
     private static AggregateFunction BuildCountFunction(Expression expression)
     {
         if (expression.Value is Expression.Identifier { Name: "*" })
@@ -49,9 +51,15 @@ public class Parser
             
         return new AggregateFunction.Count(expression);
     }
-        
-    private static readonly TokenListParser<SelectToken, Function> AggregateFunction = AvgFunction.Or(CountFunction).Or(MaxFunction).Or(MinFunction).Or(SumFunction);
-    private static readonly TokenListParser<SelectToken, Function> Function = AggregateFunction;
+
+    private static readonly TokenListParser<SelectToken, Function> ScalarFunction =
+        from name in Token.EqualTo(SelectToken.Identifier)
+        from begin in Token.EqualTo(SelectToken.LeftBracket)
+        from expr in Superpower.Parse.Ref(() => Expression)
+        from end in Token.EqualTo(SelectToken.RightBracket)
+        select (Function) new ScalarFunction(new Expression.Identifier(name.ToStringValue(), false), new [] { expr });
+
+    private static readonly TokenListParser<SelectToken, Function> Function = AggregateFunction.Or(ScalarFunction.Try());
     private static readonly TokenListParser<SelectToken, Expression> FunctionExpression = Function.Select(x => (Expression) new Expression.FunctionExpression(x));
 
     private static TokenListParser<SelectToken, Function> SingleParameterFunction(SelectToken nameToken, Func<Expression, AggregateFunction> constructor) => SingleParameterFunction(nameToken, x => (Function) constructor(x));
@@ -95,8 +103,8 @@ public class Parser
         select expr;
 
     public static readonly TokenListParser<SelectToken, Expression> Term =
-        QualifiedIdentifier
-            .Or(FunctionExpression)
+        FunctionExpression
+            .Or(QualifiedIdentifier)
             .Or(Number.Select(x => (Expression)new Expression.NumberLiteral(x)))
             .Or(String.Select(x => (Expression)new Expression.StringLiteral(x)))
             .Or(Boolean.Select(x => (Expression)new Expression.BooleanLiteral(x)))
