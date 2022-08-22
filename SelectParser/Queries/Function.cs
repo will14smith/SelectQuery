@@ -1,9 +1,11 @@
-﻿using OneOf;
+﻿using System.Collections.Generic;
+using System.Linq;
+using OneOf;
 
 namespace SelectParser.Queries;
 
 [GenerateOneOf]
-public partial class Function : OneOfBase<AggregateFunction>
+public partial class Function : OneOfBase<AggregateFunction, ScalarFunction>
 {
     public override string ToString() => Value.ToString();
 }
@@ -131,5 +133,47 @@ public partial class AggregateFunction : OneOfBase<AggregateFunction.Average, Ag
         }
 
         public override string ToString() => $"SUM({Expression})";
+    }
+}
+
+public class ScalarFunction
+{
+    public ScalarFunction(Expression.Identifier identifier, IReadOnlyList<Expression> arguments)
+    {
+        Identifier = identifier;
+        Arguments = arguments;
+    }
+
+    public Expression.Identifier Identifier { get; }
+    public IReadOnlyList<Expression> Arguments { get; }
+
+    protected bool Equals(ScalarFunction other)
+    {
+        return Identifier.Equals(other.Identifier) && Arguments.SequenceEqual(other.Arguments);
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return ReferenceEquals(this, obj) || obj is ScalarFunction other && Equals(other);
+    }
+
+    public override int GetHashCode()
+    {
+        unchecked
+        {
+            var hc = (Identifier.GetHashCode() * 397) ^ Arguments.Count.GetHashCode();
+            
+            foreach (var expression in Arguments)
+            {
+                hc = (hc * 397) ^ expression.GetHashCode();
+            }
+
+            return hc;
+        }
+    }
+
+    public override string ToString()
+    {
+        return $"{Identifier.Name}({string.Join(", ", Arguments)})";
     }
 }

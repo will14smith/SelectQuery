@@ -17,7 +17,7 @@ public class ExpressionEvaluator
             boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
             identifier => EvaluateIdentifier<T>(identifier, obj),
             qualified => EvaluateQualified<T>(qualified, obj),
-            function => throw new NotImplementedException(),
+            function => EvaluateFunction<T>(function.Function, obj),
             unary => EvaluateUnary<T>(unary, obj),
             binary => EvaluateBinary<T>(binary, obj),
             between => (T)(object)EvaluateBetween(between, obj),
@@ -31,7 +31,6 @@ public class ExpressionEvaluator
         if (value.Value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
         return value;
     }
-
     private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
     {
         return strLiteral.Value;
@@ -78,6 +77,21 @@ public class ExpressionEvaluator
         var target = EvaluateIdentifier<object>(qualified.Qualification, obj);
 
         return target.SelectMany(obj => Evaluate<T>(qualified.Expression, obj));
+    }
+    
+    private Option<T> EvaluateFunction<T>(Function function, object obj)
+    {
+        if (!function.IsT1)
+        {
+            throw new InvalidOperationException("cannot evaluate a non-scalar function in this way");
+        }
+        
+        var scalar = function.AsT1;
+
+        var name = scalar.Identifier.Name;
+        var arguments = scalar.Arguments.Select(argument => Evaluate<object>(argument, obj)).ToList();
+
+        return FunctionEvaluator.Evaluate<T>(name, arguments);
     }
 
     private Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)

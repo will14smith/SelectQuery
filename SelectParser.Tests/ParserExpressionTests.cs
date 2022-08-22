@@ -543,7 +543,7 @@ public class ParserExpressionTests
         AssertIdentifier("*", qualified.Expression);
     }
     [Fact]
-    public void ParsingFunction()
+    public void ParsingAggregateFunction()
     {
         var input = "AVG(Value)";
 
@@ -554,6 +554,20 @@ public class ParserExpressionTests
         var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
         var average = Assert.IsType<AggregateFunction.Average>(aggregate.Value);
         AssertIdentifier("Value", average.Expression);
+    }
+    [Fact]
+    public void ParsingScalarFunction()
+    {
+        var input = "LOWER(Value)";
+
+        var result = Parse(Parser.Term, input);
+
+        var expression = AssertSuccess(result);
+        var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
+        var scalar = Assert.IsType<ScalarFunction>(function.Function.Value);
+        AssertIdentifier("LOWER", scalar.Identifier);
+        Assert.Equal(1, scalar.Arguments.Count);
+        AssertIdentifier("Value", scalar.Arguments[0]);
     }
     [Fact]
     public void ParsingCountColumn()
