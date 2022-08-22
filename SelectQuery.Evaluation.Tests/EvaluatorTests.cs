@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -135,7 +136,34 @@ public class EvaluatorTests
 
         Assert.Equal(expectedCount, response.Count(x => x == '\n'));
     }
-        
+    
+    [Theory]
+
+    [InlineData("SELECT LOWER(s.a) FROM s3object s", new [] { @"{""a"":null}", @"{""a"":""""}", @"{""a"":""a""}", @"{""a"":""AbC""}" }, new [] { @"{""_1"":null}", @"{""_1"":""""}", @"{""_1"":""a""}", @"{""_1"":""abc""}" })]
+    [InlineData("SELECT s.a FROM s3object s WHERE LOWER(s.a) = 'a'", new [] { @"{""a"":null}", @"{""a"":""""}", @"{""a"":""a""}", @"{""a"":""A""}", @"{""a"":""AB""}" }, new [] { @"{""a"":""a""}", @"{""a"":""A""}" })]
+    public void FunctionQueries(string queryString, string[] inputRecords, string[] expectedRecords)
+    {
+        var query = ParseQuery(queryString);
+
+        var response = Evaluate(query, inputRecords);
+
+        AssertResponse(expectedRecords, response);
+    }
+    
+    [Theory]
+
+    [InlineData("SELECT LOWER(s.a) FROM s3object s", new [] { @"{""a"":1}" })]
+    [InlineData("SELECT s.a FROM s3object s WHERE LOWER(s.a) = 'a'", new [] { @"{""a"":1}" })]
+    // TODO add when multi-arg functions are supported [InlineData("SELECT LOWER() FROM s3object s", new [] { @"{""a"":""A""}" })]
+    // TODO add when multi-arg functions are supported [InlineData("SELECT LOWER(s.a, s.a) FROM s3object s", new [] { @"{""a"":""A""}" })]
+    public void InvalidFunctionQueries(string queryString, string[] inputRecords)
+    {
+        var query = ParseQuery(queryString);
+
+        Assert.ThrowsAny<Exception>(() => Evaluate(query, inputRecords));
+
+    }
+
     private static Query ParseQuery(string query)
     {
         var result = Parser.Parse(query);
