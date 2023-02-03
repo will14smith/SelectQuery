@@ -157,68 +157,83 @@ public class Parser
         return new Expression.Binary(operation, left, right);
     }
 
-    public static readonly TokenListParser<SelectToken, Expression> Membership =
-    (
-        from expression in Additive
-        from @in in Token.EqualTo(SelectToken.In)
-        from begin in Token.EqualTo(SelectToken.LeftBracket)
-        from values in Superpower.Parse.Ref(() => Expression).ManyDelimitedBy(
-            Token.EqualTo(SelectToken.Comma),
-            Token.EqualTo(SelectToken.RightBracket))
-        select (Expression)new Expression.In(expression, values)
-    ).Try().Or(Additive);
+    public static readonly TokenListParser<SelectToken, Expression> Membership = ParseOptionalOrDefaultSuffix(
+        Additive,
+        (
+            from @in in Token.EqualTo(SelectToken.In)
+            from begin in Token.EqualTo(SelectToken.LeftBracket)
+            from values in Superpower.Parse.Ref(() => Expression).ManyDelimitedBy(
+                Token.EqualTo(SelectToken.Comma),
+                Token.EqualTo(SelectToken.RightBracket))
+            select values
+        ),
+        (expr, suffix) => new Expression.In(expr, suffix)
+    );
 
-    public static readonly TokenListParser<SelectToken, Expression> IsNull =
-    (
-        from expression in Membership
-        from @is in Token.EqualTo(SelectToken.Is)
-        from not in Token.EqualTo(SelectToken.Not).Optional()
-        from @null in Token.EqualTo(SelectToken.Null)
-        select (Expression)new Expression.IsNull(expression, not.HasValue)
-    ).Try().Or(Membership);
-        
-    public static readonly TokenListParser<SelectToken, Expression> Presence =
-    (
-        from expression in IsNull
-        from @is in Token.EqualTo(SelectToken.Is)
-        from not in Token.EqualTo(SelectToken.Not).Optional()
-        from missing in Token.EqualTo(SelectToken.Missing)
-        select (Expression)new Expression.Presence(expression, !not.HasValue)
-    ).Try().Or(IsNull);
+    public static readonly TokenListParser<SelectToken, Expression> IsNull = ParseOptionalSuffix(
+        Membership,
+        (
+            from @is in Token.EqualTo(SelectToken.Is)
+            from not in Token.EqualTo(SelectToken.Not).Optional()
+            from @null in Token.EqualTo(SelectToken.Null)
+            select not.HasValue
+        ),
+        (expr, suffix) => new Expression.IsNull(expr, suffix)
+    );
 
-    public static readonly TokenListParser<SelectToken, Expression> Containment =
-    (
-        from expression in Presence
-        from not in Token.EqualTo(SelectToken.Not).Optional()
-        from between in Token.EqualTo(SelectToken.Between)
-        from lower in Presence
-        from and in Token.EqualTo(SelectToken.And)
-        from upper in Superpower.Parse.Ref(() => Expression)
-        select (Expression)new Expression.Between(not.HasValue, expression, lower, upper)
-    ).Try().Or(Presence);
+    public static readonly TokenListParser<SelectToken, Expression> Presence = ParseOptionalSuffix(
+        IsNull,
+        (
+            from @is in Token.EqualTo(SelectToken.Is)
+            from not in Token.EqualTo(SelectToken.Not).Optional()
+            from missing in Token.EqualTo(SelectToken.Missing)
+            select not.HasValue
+        ),
+        (expr, suffix) => new Expression.Presence(expr, !suffix)
+    );
 
-    public static readonly TokenListParser<SelectToken, Expression> Pattern =
-    (
-        from expression in Containment
-        from between in Token.EqualTo(SelectToken.Like)
-        from pattern in Superpower.Parse.Ref(() => Expression)
-        from escape in Token.EqualTo(SelectToken.Escape)
-        from escapeExpression in Superpower.Parse.Ref(() => Expression)
-        select (Expression)new Expression.Like(expression, pattern, escapeExpression)
-    ).Try().Or(
-        from expression in Containment
-        from between in Token.EqualTo(SelectToken.Like)
-        from pattern in Superpower.Parse.Ref(() => Expression)
-        select (Expression)new Expression.Like(expression, pattern, new None())
-    ).Try().Or(Containment);
+    public static readonly TokenListParser<SelectToken, Expression> Containment = ParseOptionalSuffix(
+        Presence,
+        (
+            from not in Token.EqualTo(SelectToken.Not).Optional()
+            from between in Token.EqualTo(SelectToken.Between)
+            from lower in Presence
+            from and in Token.EqualTo(SelectToken.And)
+            from upper in Superpower.Parse.Ref(() => Expression)
+            select (negate: not.HasValue, lower, upper)
+        ),
+        (expr, suffix) => new Expression.Between(suffix.negate, expr, suffix.lower, suffix.upper)
+    );
 
-    public static readonly TokenListParser<SelectToken, Expression> Comparative =
-    (
-        from left in Pattern
-        from operation in Token.EqualTo(SelectToken.Lesser).Or(Token.EqualTo(SelectToken.Greater)).Or(Token.EqualTo(SelectToken.LesserOrEqual)).Or(Token.EqualTo(SelectToken.GreaterOrEqual))
-        from right in Pattern
-        select (Expression)new Expression.Binary(GetComparativeOperation(operation), left, right)
-    ).Try().Or(Pattern);
+    private static readonly TokenListParser<SelectToken, (Expression Pattern, Option<Expression> Escape)> PatternSuffix = ParseOptionalOrDefaultSuffix(
+        (
+            from between in Token.EqualTo(SelectToken.Like)
+            from pattern in Superpower.Parse.Ref(() => Expression)
+            select (pattern, (Option<Expression>)new None())
+        ),
+        (
+            from escape in Token.EqualTo(SelectToken.Escape)
+            from escapeExpression in Superpower.Parse.Ref(() => Expression)
+            select escapeExpression
+        ),
+        (pattern, escape) => (pattern.pattern, escape)
+    );
+
+    public static readonly TokenListParser<SelectToken, Expression> Pattern = ParseOptionalSuffix(
+        Containment,
+        PatternSuffix,
+        (expr, suffix) => new Expression.Like(expr, suffix.Pattern, suffix.Escape)
+    );
+
+    public static readonly TokenListParser<SelectToken, Expression> Comparative = ParseOptionalSuffix(
+        Pattern,
+        (
+            from operation in Token.EqualTo(SelectToken.Lesser).Or(Token.EqualTo(SelectToken.Greater)).Or(Token.EqualTo(SelectToken.LesserOrEqual)).Or(Token.EqualTo(SelectToken.GreaterOrEqual))
+            from right in Pattern
+            select (operation, right)
+        ),
+        (expr, suffix) => new Expression.Binary(GetComparativeOperation(suffix.operation), expr, suffix.right)
+    );
     private static BinaryOperator GetComparativeOperation(Token<SelectToken> operation) => operation.Kind switch
     {
         SelectToken.Lesser => BinaryOperator.Lesser,
@@ -343,7 +358,7 @@ public class Parser
         from order in OrderByClause.Select(x => (Option<OrderClause>)x).OptionalOrDefault(new None())
         from limit in LimitClause.Select(x => (Option<LimitClause>)x).OptionalOrDefault(new None())
         select new Query(@select, @from, @where, order, limit);
-
+    
     [PublicAPI]
     public static TokenListParserResult<SelectToken, Query> Parse(string input)
     {
@@ -369,4 +384,15 @@ public class Parser
         // TODO handle escapes
         return rawValue.Substring(1, rawValue.Length - 2);
     }
+
+    private static TokenListParser<SelectToken, T1> ParseOptionalSuffix<T1, T2>(TokenListParser<SelectToken, T1> expressionParser, TokenListParser<SelectToken, T2> suffixParser, Func<T1, T2, T1> selector) where T2 : struct =>
+        from expression in expressionParser
+        from suffix in suffixParser.Try().Optional()
+        select suffix.HasValue ? selector(expression, suffix.Value) : expression;
+    
+    private static TokenListParser<SelectToken, T1> ParseOptionalOrDefaultSuffix<T1, T2>(TokenListParser<SelectToken, T1> expressionParser, TokenListParser<SelectToken, T2> suffixParser, Func<T1, T2, T1> selector) where T2 : class =>
+        from expression in expressionParser
+        from suffix in suffixParser.Try().OptionalOrDefault()
+        select suffix != default ? selector(expression, suffix) : expression;
+
 }
