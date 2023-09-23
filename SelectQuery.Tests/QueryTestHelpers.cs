@@ -29,7 +29,7 @@ namespace SelectQuery.Tests
             Assert.Equal(expected.IsSome, actual.IsSome);
             if (expected.IsSome)
             {
-                AssertEqual(expected.AsT0, actual.AsT0);
+                AssertEqual(expected.Value, actual.Value);
             }
         }
         public static void AssertEqual(SelectClause expected, SelectClause actual)
@@ -69,7 +69,7 @@ namespace SelectQuery.Tests
             Assert.Equal(expected.IsSome, actual.IsSome);
             if (expected.IsSome)
             {
-                AssertEqual(expected.AsT0, actual.AsT0);
+                AssertEqual(expected.Value, actual.Value);
             }
         }
         public static void AssertEqual(WhereClause expected, WhereClause actual)
@@ -90,7 +90,7 @@ namespace SelectQuery.Tests
             Assert.Equal(expected.IsSome, actual.IsSome);
             if (expected.IsSome)
             {
-                AssertEqual(expected.AsT0, actual.AsT0);
+                AssertEqual(expected.Value, actual.Value);
             }
         }
         public static void AssertEqual(OrderClause expected, OrderClause actual)
@@ -120,7 +120,7 @@ namespace SelectQuery.Tests
             Assert.Equal(expected.IsSome, actual.IsSome);
             if (expected.IsSome)
             {
-                AssertEqual(expected.AsT0, actual.AsT0);
+                AssertEqual(expected.Value, actual.Value);
             }
         }
         public static void AssertEqual(LimitClause expected, LimitClause actual)

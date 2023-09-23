@@ -11,8 +11,8 @@ namespace SelectQuery
     {
         public static IAsyncEnumerable<ResultRow> Order(Option<OrderClause> orderOpt, IAsyncEnumerable<ResultRow> results)
         {
-            if (orderOpt.IsNone || orderOpt.AsT0.Columns.Count == 0) return results;
-            var columns = orderOpt.AsT0.Columns;
+            if (orderOpt.IsNone || orderOpt.Value.Columns.Count == 0) return results;
+            var columns = orderOpt.Value.Columns;
 
             var firstColumn = columns[0];
             var orderedResults = firstColumn.Direction == OrderDirection.Ascending
@@ -44,7 +44,7 @@ namespace SelectQuery
         public static IAsyncEnumerable<ResultRow> Limit(Option<LimitClause> limitOpt, IAsyncEnumerable<ResultRow> results)
         {
             if (limitOpt.IsNone) return results;
-            var limit = limitOpt.AsT0;
+            var limit = limitOpt.Value;
 
             return results.Take(limit.Limit);
         }

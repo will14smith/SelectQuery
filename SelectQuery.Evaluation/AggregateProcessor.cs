@@ -17,7 +17,7 @@ internal class AggregateProcessor
         _columns = ColumnState.CreateForQuery(query);
     }
 
-    public void ProcessRecord(object record)
+    public void ProcessRecord(JsonElement record)
     {
         foreach (var column in _columns)
         {
@@ -85,10 +85,10 @@ internal class AggregateProcessor
             );
         }
         
-        public abstract void ProcessRecord(object record);
+        public abstract void ProcessRecord(JsonElement record);
         public abstract void WriteResult(Utf8JsonWriter writer);
 
-        protected Option<T> Evaluate<T>(Expression expression, object record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, _query.From, record);
+        protected Option<T> Evaluate<T>(Expression expression, JsonElement record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, _query.From, record);
 
         private class AverageColumnState : ColumnState
         {
@@ -98,7 +98,7 @@ internal class AggregateProcessor
             
             public AverageColumnState(Column column, Query query, AggregateFunction.Average average) : base(column, query) => _average = average;
 
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(JsonElement record)
             {
                 var value = Evaluate<object>(_average.Expression, record);
                 if (value.IsNone)
@@ -107,7 +107,7 @@ internal class AggregateProcessor
                 }
                 
                 _count++;
-                _acc += ExpressionEvaluator.ConvertToDecimal(value.AsT0);
+                _acc += ExpressionEvaluator.ConvertToDecimal(value.Value);
             }
 
             public override void WriteResult(Utf8JsonWriter writer)
@@ -132,11 +132,11 @@ internal class AggregateProcessor
             
             public CountColumnState(Column column, Query query, AggregateFunction.Count count) : base(column, query) => _count = count;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(JsonElement record)
             {
                 if (!_count.Expression.IsNone)
                 {
-                    var value = Evaluate<object>(_count.Expression.AsT0, record);
+                    var value = Evaluate<object>(_count.Expression.Value, record);
                     if (value.IsNone)
                     {
                         return;
@@ -159,7 +159,7 @@ internal class AggregateProcessor
             
             public MaxColumnState(Column column, Query query, AggregateFunction.Max max) : base(column, query) => _max = max;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(JsonElement record)
             {
                 var result = Evaluate<object>(_max.Expression, record);
                 if (result.IsNone)
@@ -167,7 +167,7 @@ internal class AggregateProcessor
                     return;
                 }
                 
-                var value = ExpressionEvaluator.ConvertToDecimal(result.AsT0);
+                var value = ExpressionEvaluator.ConvertToDecimal(result.Value);
                 if (_best == null || value > _best)
                 {
                     _best = value;
@@ -194,7 +194,7 @@ internal class AggregateProcessor
 
             public MinColumnState(Column column, Query query, AggregateFunction.Min min) : base(column, query) => _min = min;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(JsonElement record)
             {
                 var result = Evaluate<object>(_min.Expression, record);
                 if (result.IsNone)
@@ -202,7 +202,7 @@ internal class AggregateProcessor
                     return;
                 }
                 
-                var value = ExpressionEvaluator.ConvertToDecimal(result.AsT0);
+                var value = ExpressionEvaluator.ConvertToDecimal(result.Value);
                 if (_best == null || value < _best)
                 {
                     _best = value;
@@ -229,7 +229,7 @@ internal class AggregateProcessor
             
             public SumColumnState(Column column, Query query, AggregateFunction.Sum sum) : base(column, query) => _sum = sum;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(JsonElement record)
             {
                 var value = Evaluate<object>(_sum.Expression, record);
                 if (value.IsNone)
@@ -237,7 +237,7 @@ internal class AggregateProcessor
                     return;
                 }
                 
-                _acc = (_acc ?? 0) + ExpressionEvaluator.ConvertToDecimal(value.AsT0);
+                _acc = (_acc ?? 0) + ExpressionEvaluator.ConvertToDecimal(value.Value);
             }
 
             public override void WriteResult(Utf8JsonWriter writer)

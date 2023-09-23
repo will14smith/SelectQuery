@@ -17,7 +17,7 @@ namespace SelectQuery.Distribution
 
             if (input.Order.IsSome)
             {
-                var builder = new PlanOrderBuilder(input, input.Order.AsT0);
+                var builder = new PlanOrderBuilder(input, input.Order.Value);
 
                 underlyingSelect = builder.UnderlyingSelect;
                 order = builder.Order;
@@ -25,7 +25,7 @@ namespace SelectQuery.Distribution
 
             if (input.Limit.IsSome)
             {
-                var limitValue = input.Limit.AsT0;
+                var limitValue = input.Limit.Value;
 
                 limit = limitValue;
 
@@ -75,7 +75,7 @@ namespace SelectQuery.Distribution
 
             private void BuildStar(SelectClause.Star star)
             {
-                var table = _input.From.Alias.Match(x => x, _ => _input.From.Table);
+                var table = _input.From.Alias.Match(x => x, () => _input.From.Table);
                 _underlyingSelect.Add(new Column(new Expression.Qualified(new Expression.Identifier(table, false), new Expression.Identifier("*", false))));
 
                 foreach (var (orderExpression, orderDirection) in _order.Columns)
@@ -123,7 +123,7 @@ namespace SelectQuery.Distribution
 
             private static string GetProjectedColumnName(Column selectColumn, int i)
             {
-                return selectColumn.Alias.Match(x => x, _ => TryGetColumnName(selectColumn.Expression, out var name) ? name : $"_{i + 1}");
+                return selectColumn.Alias.Match(x => x, () => TryGetColumnName(selectColumn.Expression, out var name) ? name : $"_{i + 1}");
             }
 
             private static bool TryGetColumnName(Expression expression, out string name)

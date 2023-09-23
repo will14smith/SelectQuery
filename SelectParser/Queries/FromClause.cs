@@ -18,6 +18,6 @@ public class FromClause
 
     public override string ToString()
     {
-        return Alias.IsNone ? $"FROM {Table}" : $"FROM {Table} AS {Alias.AsT0}";
+        return Alias.IsNone ? $"FROM {Table}" : $"FROM {Table} AS {Alias.Value}";
     }
 }

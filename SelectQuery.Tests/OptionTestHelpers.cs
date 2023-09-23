@@ -9,7 +9,7 @@ namespace SelectQuery.Tests
         {
             Assert.NotNull(option);
             Assert.True(option.IsSome, $"Expecting Some({typeof(T).Name}) but got None instead");
-            return option.AsT0;
+            return option.Value;
         }
         public static void AssertNone<T>(Option<T> option)
         {

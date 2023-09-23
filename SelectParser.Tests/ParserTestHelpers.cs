@@ -28,7 +28,7 @@ public class ParserTestHelpers
     public static T AssertSome<T>(Option<T> option)
     {
         Assert.True(option.IsSome);
-        return option.AsT0;
+        return option.Value;
     }
     public static void AssertNone<T>(Option<T> option)
     {

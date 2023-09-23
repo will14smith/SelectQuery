@@ -37,7 +37,7 @@ public class JsonLinesEvaluator
         else
         {
             var recordsProcessed = 0;
-            var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
+            var limit = _query.Limit.Match(static x => x.Limit, static () => int.MaxValue);
 
             while (ProcessRecord(ref reader, writer, outputBuffer, ref recordsProcessed))
             {
@@ -56,7 +56,7 @@ public class JsonLinesEvaluator
         var state = new AggregateProcessor(_query);
             
         var recordsProcessed = 0;
-        var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
+        var limit = _query.Limit.Match(static x => x.Limit, static () => int.MaxValue);
             
         while (true)
         {
@@ -66,7 +66,7 @@ public class JsonLinesEvaluator
                 break;
             }
 
-            var record = readResult.AsT0;
+            var record = readResult.Value;
             if (TestPredicate(record))
             {
                 if (recordsProcessed++ >= limit)
@@ -90,7 +90,7 @@ public class JsonLinesEvaluator
             return false;
         }
 
-        var record = readResult.AsT0;
+        var record = readResult.Value;
         if (TestPredicate(record))
         {
             recordsProcessed++;
@@ -101,7 +101,7 @@ public class JsonLinesEvaluator
         return true;
     }
     
-    private Option<object> ReadRecord(ref JsonLinesReader lineReader)
+    private Option<JsonElement> ReadRecord(ref JsonLinesReader lineReader)
     {
         if (!lineReader.Read())
         {
@@ -109,14 +109,14 @@ public class JsonLinesEvaluator
         }
 
         var reader = lineReader.Current;
-        return JsonSerializer.Deserialize<object>(ref reader);
+        return JsonDocument.ParseValue(ref reader).RootElement;
     }
 
-    private bool TestPredicate(object record)
+    private bool TestPredicate(JsonElement record)
     {
-        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
+        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), static () => true);
 
-        return wherePassed.IsSome && wherePassed.AsT0;
+        return wherePassed.IsSome && wherePassed.Value;
     }
     
     private static void WriteEndRecord(Utf8JsonWriter writer, Stream outputBuffer)

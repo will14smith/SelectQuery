@@ -23,7 +23,7 @@ namespace SelectQuery.Tests.Fakes
         {
             if (ExpectedDataSource.IsSome)
             {
-                Assert.Equal(ExpectedDataSource.AsT0, source);
+                Assert.Equal(ExpectedDataSource.Value, source);
             }
 
             return Task.FromResult(_sources);

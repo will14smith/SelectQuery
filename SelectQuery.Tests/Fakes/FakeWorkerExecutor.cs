@@ -26,11 +26,11 @@ namespace SelectQuery.Tests.Fakes
         {
             if (ExpectedPlan.IsSome)
             {
-                Assert.Equal(ExpectedPlan.AsT0, plan);
+                Assert.Equal(ExpectedPlan.Value, plan);
             }
             if (ExpectedSources.IsSome)
             {
-                Assert.Equal(ExpectedSources.AsT0, sources);
+                Assert.Equal(ExpectedSources.Value, sources);
             }
 
             return _results.ToAsyncEnumerable();

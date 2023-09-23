@@ -26,11 +26,11 @@ namespace SelectQuery.Tests.Fakes
         {
             if (ExpectedQuery.IsSome)
             {
-                QueryTestHelpers.AssertEqual(ExpectedQuery.AsT0, query);
+                QueryTestHelpers.AssertEqual(ExpectedQuery.Value, query);
             }
             if (ExpectedDataLocation.IsSome)
             {
-                Assert.Equal(ExpectedDataLocation.AsT0, dataLocation);
+                Assert.Equal(ExpectedDataLocation.Value, dataLocation);
             }
 
             return _results.ToAsyncEnumerable();

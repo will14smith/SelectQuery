@@ -581,7 +581,7 @@ public class ParserExpressionTests
         var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
         var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
         Assert.True(count.Expression.IsSome);
-        AssertIdentifier("Value", count.Expression.AsT0);
+        AssertIdentifier("Value", count.Expression.Value);
     }
     [Fact]
     public void ParsingCountStar()

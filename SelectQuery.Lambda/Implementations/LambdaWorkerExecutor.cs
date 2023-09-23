@@ -35,8 +35,8 @@ namespace SelectQuery.Lambda.Implementations
             var input = new WorkerPublicInput
             {
                 UnderlyingQuery = plan.UnderlyingQuery.ToString(),
-                Order = plan.Order.IsSome ? plan.Order.AsT0.ToString() : null,
-                Limit = plan.Limit.IsSome ? plan.Limit.AsT0.ToString() : null,
+                Order = plan.Order.IsSome ? plan.Order.Value.ToString() : null,
+                Limit = plan.Limit.IsSome ? plan.Limit.Value.ToString() : null,
 
                 DataLocation = source
             };

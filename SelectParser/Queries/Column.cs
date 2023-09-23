@@ -18,6 +18,6 @@ public class Column
 
     public override string ToString()
     {
-        return Alias.IsSome ? $"{Expression} AS {Alias.AsT0}" : $"{Expression}";
+        return Alias.IsSome ? $"{Expression} AS {Alias.Value}" : $"{Expression}";
     }
 }

@@ -30,17 +30,17 @@ public class Query
         if (Where.IsSome)
         {
             sb.Append(" ");
-            sb.Append(Where.AsT0);
+            sb.Append(Where.Value);
         }
         if (Order.IsSome)
         {
             sb.Append(" ");
-            sb.Append(Order.AsT0);
+            sb.Append(Order.Value);
         }
         if (Limit.IsSome)
         {
             sb.Append(" ");
-            sb.Append(Limit.AsT0);
+            sb.Append(Limit.Value);
         }
 
         return sb.ToString();

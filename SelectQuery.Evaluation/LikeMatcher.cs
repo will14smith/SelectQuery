@@ -2,7 +2,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using SelectParser;
-using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
@@ -27,7 +26,7 @@ internal class LikeMatcher
             {
                 sb.Append(".*");
             }
-            else if (escape.IsSome && escape.AsT0 == c)
+            else if (escape.IsSome && escape.Value == c)
             {
                 if (i + 1 >= pattern.Length)
                 {
