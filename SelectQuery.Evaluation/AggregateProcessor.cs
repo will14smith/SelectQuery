@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using SelectParser;
 using SelectParser.Queries;
-using Utf8Json;
 
 namespace SelectQuery.Evaluation;
 
@@ -25,23 +25,16 @@ internal class AggregateProcessor
         }
     }
 
-    public void Write(ref JsonWriter writer)
+    public void Write(Utf8JsonWriter writer)
     {
-        writer.WriteBeginObject();
+        writer.WriteStartObject();
      
-        var hasWritten = false;
         for (var index = 0; index < _columns.Count; index++)
         {
-            if (hasWritten)
-            {
-                writer.WriteValueSeparator();
-            }
-            hasWritten = true;
-            
             var columnState = _columns[index];
             
             writer.WritePropertyName(JsonRecordWriter.GetColumnName(index, columnState.Column));
-            columnState.WriteResult(ref writer);
+            columnState.WriteResult(writer);
         }
 
         writer.WriteEndObject();
@@ -93,7 +86,7 @@ internal class AggregateProcessor
         }
         
         public abstract void ProcessRecord(object record);
-        public abstract void WriteResult(ref JsonWriter writer);
+        public abstract void WriteResult(Utf8JsonWriter writer);
 
         protected Option<T> Evaluate<T>(Expression expression, object record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, _query.From, record);
 
@@ -114,20 +107,20 @@ internal class AggregateProcessor
                 }
                 
                 _count++;
-                _acc += (decimal) value.AsT0;
+                _acc += ExpressionEvaluator.ConvertToDecimal(value.AsT0);
             }
 
-            public override void WriteResult(ref JsonWriter writer)
+            public override void WriteResult(Utf8JsonWriter writer)
             {
                 if (_count > 0)
                 {
                     var result = _acc / _count;
 
-                    writer.WriteDouble((double)result);
+                    writer.WriteNumberValue((double)result);
                 }
                 else
                 {
-                    writer.WriteNull();
+                    writer.WriteNullValue();
                 }
             }
         }
@@ -153,9 +146,9 @@ internal class AggregateProcessor
                 _acc++;
             }
 
-            public override void WriteResult(ref JsonWriter writer)
+            public override void WriteResult(Utf8JsonWriter writer)
             {
-                writer.WriteInt32(_acc);
+                writer.WriteNumberValue(_acc);
             }
         }
         
@@ -174,22 +167,22 @@ internal class AggregateProcessor
                     return;
                 }
                 
-                var value = (decimal) result.AsT0;
+                var value = ExpressionEvaluator.ConvertToDecimal(result.AsT0);
                 if (_best == null || value > _best)
                 {
                     _best = value;
                 }
             }
 
-            public override void WriteResult(ref JsonWriter writer)
+            public override void WriteResult(Utf8JsonWriter writer)
             {
                 if (_best != null)
                 {
-                    writer.WriteDouble((double)_best);
+                    writer.WriteNumberValue((double)_best);
                 }
                 else
                 {
-                    writer.WriteNull();
+                    writer.WriteNullValue();
                 }
             }
         }
@@ -209,22 +202,22 @@ internal class AggregateProcessor
                     return;
                 }
                 
-                var value = (decimal) result.AsT0;
+                var value = ExpressionEvaluator.ConvertToDecimal(result.AsT0);
                 if (_best == null || value < _best)
                 {
                     _best = value;
                 }
             }
 
-            public override void WriteResult(ref JsonWriter writer)
+            public override void WriteResult(Utf8JsonWriter writer)
             {
                 if (_best != null)
                 {
-                    writer.WriteDouble((double)_best);
+                    writer.WriteNumberValue((double)_best);
                 }
                 else
                 {
-                    writer.WriteNull();
+                    writer.WriteNullValue();
                 }
             }
         }
@@ -244,18 +237,18 @@ internal class AggregateProcessor
                     return;
                 }
                 
-                _acc = (_acc ?? 0) + (decimal) value.AsT0;
+                _acc = (_acc ?? 0) + ExpressionEvaluator.ConvertToDecimal(value.AsT0);
             }
 
-            public override void WriteResult(ref JsonWriter writer)
+            public override void WriteResult(Utf8JsonWriter writer)
             {
                 if (_acc != null)
                 {
-                    writer.WriteDouble((double)_acc);
+                    writer.WriteNumberValue((double)_acc);
                 }
                 else
                 {
-                    writer.WriteNull();
+                    writer.WriteNullValue();
                 }
             }
         }

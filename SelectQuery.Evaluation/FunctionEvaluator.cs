@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using OneOf.Types;
 using SelectParser;
 
@@ -32,16 +33,15 @@ internal class FunctionEvaluator
             return new None();
         }
 
-        var value = argument.Value;
-
-        if (value is not (null or string))
+        var stringValue = argument.Value switch
         {
-            throw new ArgumentException($"Expected a string argument but got {value.GetType().Name}");
-        }
-
-
-        var stringValue = value as string;
-
+            JsonElement { ValueKind: JsonValueKind.String } json => json.GetString(),
+            JsonElement { ValueKind: JsonValueKind.Null } => null,
+            string str => str,
+            null => null,
+            _ => throw new ArgumentException($"Expected a string argument but got {argument.Value.GetType().Name}")
+        };
+        
         return (T)(object)stringValue?.ToLowerInvariant();
     }
 }
