@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
@@ -16,7 +15,7 @@ public class JsonRecordWriter
         _select = select;
     }
 
-    public void Write(Utf8JsonWriter writer, JsonNode? obj)
+    public void Write(Utf8JsonWriter writer, JsonElement obj)
     {
         if (_select.IsT0)
         {
@@ -30,12 +29,12 @@ public class JsonRecordWriter
         }
     }
 
-    private static void WriteStar(Utf8JsonWriter writer, JsonNode? obj)
+    private static void WriteStar(Utf8JsonWriter writer, JsonElement obj)
     {
-        JsonSerializer.Serialize(writer, obj);
+        obj.WriteTo(writer);
     }
 
-    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, JsonNode? obj)
+    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, JsonElement obj)
     {
         for (var index = 0; index < columns.Count; index++)
         {
@@ -48,7 +47,7 @@ public class JsonRecordWriter
             }
             
             writer.WritePropertyName(GetColumnName(index, column));
-            JsonSerializer.Serialize(writer, result.AsT0);
+            result.AsT0.WriteTo(writer);
         }
     }
 

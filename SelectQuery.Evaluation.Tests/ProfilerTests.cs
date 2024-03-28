@@ -11,7 +11,8 @@ public class ProfilerTests
     [Fact]
     public void T()
     {
-        var queryString = $"SELECT * FROM s3Object s WHERE s.c0 IN ({string.Join(", ", Enumerable.Range(0, 2000).Select(x => $"'str{x}'"))})";
+        // var queryString = $"SELECT * FROM s3Object s WHERE s.c0 IN ({string.Join(", ", Enumerable.Range(0, 2000).Select(x => $"'str{x}'"))})";
+        var queryString = $"SELECT {string.Join(", ", Enumerable.Range(0, 300).Select(x => $"s.c{x}"))} FROM s3Object s";
         
         var largeRecords = new List<string>();
         for (var i = 0; i < 5_000; i++)

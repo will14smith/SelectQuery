@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -9,13 +10,32 @@ using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
-public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
+public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables)
 {
-    public static Option<JsonNode?> EvaluateOnTable(Expression expression, FromClause from, JsonNode? obj)
+    private static readonly JsonElement True; 
+    private static readonly JsonElement False; 
+    private static readonly JsonElement Null;
+
+    static ExpressionEvaluator()
+    {
+        True = Create("true"u8);
+        False = Create("false"u8);
+        Null = Create("null"u8);
+        
+        return;
+
+        JsonElement Create(ReadOnlySpan<byte> buffer)
+        {
+            var reader = new Utf8JsonReader(buffer);
+            return JsonElement.ParseValue(ref reader);
+        }
+    }
+    
+    public static Option<JsonElement> EvaluateOnTable(Expression expression, FromClause from, JsonElement obj)
     {
         var tableName = from.Alias.Match(alias => alias, _ => "s3object");
         
-        var tables = new Dictionary<string, JsonNode?>(StringComparer.OrdinalIgnoreCase)
+        var tables = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
         {
             { tableName, obj }
         };
@@ -25,28 +45,55 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         return evaluator.Evaluate(expression, new None());
     }
     
-    public Option<JsonNode?> Evaluate(Expression expression, Option<JsonNode?> context)
+    public Option<JsonElement> Evaluate(Expression expression, Option<JsonElement> context)
     {
-        var value = expression.Match<Option<JsonNode?>>(
-            strLiteral => JsonValue.Create(strLiteral.Value),
-            numLiteral => JsonValue.Create(numLiteral.Value),
-            boolLiteral => JsonValue.Create(boolLiteral.Value),
+        var value = expression.Match<Option<JsonElement>>(
+            strLiteral => CreateElement(strLiteral.Value),
+            numLiteral => CreateElement(numLiteral.Value),
+            boolLiteral => CreateElement(boolLiteral.Value),
             identifier => EvaluateIdentifier(identifier, context),
             qualified => EvaluateQualified(qualified, context),
             function => EvaluateFunction(function.Function, context),
             unary => EvaluateUnary(unary, context),
             binary => EvaluateBinary(binary, context),
-            between => JsonValue.Create(EvaluateBetween(between, context)),
-            isNull => JsonValue.Create(EvaluateIsNull(isNull, context)),
-            presence => JsonValue.Create(EvaluatePresence(presence, context)),
-            inExpr => JsonValue.Create(EvaluateIn(inExpr, context)),
-            like => JsonValue.Create(EvaluateLike(like, context))
+            between => CreateElement(EvaluateBetween(between, context)),
+            isNull => CreateElement(EvaluateIsNull(isNull, context)),
+            presence => CreateElement(EvaluatePresence(presence, context)),
+            inExpr => CreateElement(EvaluateIn(inExpr, context)),
+            like => CreateElement(EvaluateLike(like, context))
         );
 
         return value;
     }
+    
+    internal static JsonElement CreateElement(string? value)
+    {
+        if (value is null) return Null;
+        
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteStringValue(value);
+        }
 
-    private Option<JsonNode?> EvaluateIdentifier(Expression.Identifier identifier, Option<JsonNode?> context)
+        var reader = new Utf8JsonReader(stream.ToArray());
+        return JsonElement.ParseValue(ref reader);
+    }
+    internal static JsonElement CreateElement(decimal value)
+    {
+        using var stream = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(stream))
+        {
+            writer.WriteNumberValue(value);
+        }
+
+        var reader = new Utf8JsonReader(stream.ToArray());
+        return JsonElement.ParseValue(ref reader);
+    }
+    internal static JsonElement CreateElement(bool value) => value ? True : False;
+    internal static JsonElement CreateNullElement() => Null;
+
+    private Option<JsonElement> EvaluateIdentifier(Expression.Identifier identifier, Option<JsonElement> context)
     {
         if (context.IsNone)
         {
@@ -58,10 +105,10 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
             return tables.TryGetValue(identifier.Name, out var table) ? table : default;
         }
 
-        if (context.AsT0 is JsonObject contextObject)
+        if (context.AsT0 is { ValueKind: JsonValueKind.Object })
         {
             // fast: match exact key
-            if (contextObject.TryGetPropertyValue(identifier.Name, out var result))
+            if (context.AsT0.TryGetProperty(identifier.Name, out var result))
             {
                 return result;
             }
@@ -72,14 +119,14 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
             }
             
             // slow: try match case-insensitive key
-            var entry = contextObject.FirstOrDefault(x => string.Equals(x.Key, identifier.Name, StringComparison.OrdinalIgnoreCase));
-            return entry.Key != default ? entry.Value : new None();
+            var entry = context.AsT0.EnumerateObject().FirstOrDefault(x => string.Equals(x.Name, identifier.Name, StringComparison.OrdinalIgnoreCase));
+            return entry.Value.ValueKind != JsonValueKind.Undefined ? entry.Value : new None();
         }
         
-        throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {context.AsT0?.GetType().FullName ?? "null"}");
+        throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {context.AsT0.ValueKind}");
     }
 
-    private Option<JsonNode?> EvaluateQualified(Expression.Qualified qualified, Option<JsonNode?> context)
+    private Option<JsonElement> EvaluateQualified(Expression.Qualified qualified, Option<JsonElement> context)
     {
         var target = EvaluateIdentifier(qualified.Qualification, context);
 
@@ -92,7 +139,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
 
     }
     
-    private Option<JsonNode?> EvaluateFunction(Function function, Option<JsonNode?> context)
+    private Option<JsonElement> EvaluateFunction(Function function, Option<JsonElement> context)
     {
         if (!function.IsT1)
         {
@@ -107,7 +154,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         return FunctionEvaluator.Evaluate(name, arguments);
     }
 
-    private Option<JsonNode?> EvaluateUnary(Expression.Unary unary, Option<JsonNode?> context)
+    private Option<JsonElement> EvaluateUnary(Expression.Unary unary, Option<JsonElement> context)
     {
         var value = Evaluate(unary.Expression, context);
         
@@ -122,19 +169,19 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
             case UnaryOperator.Not:
             {
                 var boolValue = ConvertToBoolean(value.AsT0);
-                return JsonValue.Create(!boolValue);
+                return CreateElement(!boolValue);
             }
             case UnaryOperator.Negate:
             {
                 var boolValue = ConvertToDecimal(value.AsT0);
-                return JsonValue.Create(-boolValue);
+                return CreateElement(-boolValue);
             }
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
 
-    private Option<JsonNode?> EvaluateBinary(Expression.Binary binary, Option<JsonNode?> context)
+    private Option<JsonElement> EvaluateBinary(Expression.Binary binary, Option<JsonElement> context)
     {
         var leftOpt = Evaluate(binary.Left, context);
         var rightOpt = Evaluate(binary.Right, context);
@@ -149,44 +196,43 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         
         var left = leftOpt.AsT0;
         var right = rightOpt.AsT0;
-        if (left == null || right == null) return new None();
-
+        if (left is { ValueKind: JsonValueKind.Null } || right is { ValueKind: JsonValueKind.Null }) return new None();
         
         return binary.Operator switch
         {
-            BinaryOperator.And => JsonValue.Create(ConvertToBoolean(left) && ConvertToBoolean(right)),
-            BinaryOperator.Or => JsonValue.Create(ConvertToBoolean(left) || ConvertToBoolean(right)),
-            BinaryOperator.Lesser => JsonValue.Create(ConvertToDecimal(left) < ConvertToDecimal(right)),
-            BinaryOperator.Greater => JsonValue.Create(ConvertToDecimal(left) > ConvertToDecimal(right)),
-            BinaryOperator.LesserOrEqual => JsonValue.Create(ConvertToDecimal(left) <= ConvertToDecimal(right)),
-            BinaryOperator.GreaterOrEqual => JsonValue.Create(ConvertToDecimal(left) >= ConvertToDecimal(right)),
+            BinaryOperator.And => CreateElement(ConvertToBoolean(left) && ConvertToBoolean(right)),
+            BinaryOperator.Or => CreateElement(ConvertToBoolean(left) || ConvertToBoolean(right)),
+            BinaryOperator.Lesser => CreateElement(ConvertToDecimal(left) < ConvertToDecimal(right)),
+            BinaryOperator.Greater => CreateElement(ConvertToDecimal(left) > ConvertToDecimal(right)),
+            BinaryOperator.LesserOrEqual => CreateElement(ConvertToDecimal(left) <= ConvertToDecimal(right)),
+            BinaryOperator.GreaterOrEqual => CreateElement(ConvertToDecimal(left) >= ConvertToDecimal(right)),
 
-            BinaryOperator.Equal => JsonValue.Create(EvaluateEquality(left, right)),
-            BinaryOperator.NotEqual => JsonValue.Create(!EvaluateEquality(left, right)),
+            BinaryOperator.Equal => CreateElement(EvaluateEquality(left, right)),
+            BinaryOperator.NotEqual => CreateElement(!EvaluateEquality(left, right)),
 
-            BinaryOperator.Subtract => JsonValue.Create(ConvertToDecimal(left) - ConvertToDecimal(right)),
-            BinaryOperator.Multiply => JsonValue.Create(ConvertToDecimal(left) * ConvertToDecimal(right)),
-            BinaryOperator.Divide => JsonValue.Create(ConvertToDecimal(left) / ConvertToDecimal(right)),
-            BinaryOperator.Modulo => JsonValue.Create(ConvertToDecimal(left) % ConvertToDecimal(right)),
+            BinaryOperator.Subtract => CreateElement(ConvertToDecimal(left) - ConvertToDecimal(right)),
+            BinaryOperator.Multiply => CreateElement(ConvertToDecimal(left) * ConvertToDecimal(right)),
+            BinaryOperator.Divide => CreateElement(ConvertToDecimal(left) / ConvertToDecimal(right)),
+            BinaryOperator.Modulo => CreateElement(ConvertToDecimal(left) % ConvertToDecimal(right)),
 
             _ => throw new ArgumentOutOfRangeException()
         };
     }
 
-    private Option<JsonNode?> EvaluateAddition(Option<JsonNode?> left, Option<JsonNode?> right)
+    private Option<JsonElement> EvaluateAddition(Option<JsonElement> left, Option<JsonElement> right)
     {
-        if (left.IsNone || left.AsT0 is null) return right;
-        if (right.IsNone || right.AsT0 is null) return (JsonNode?)null;
+        if (left.IsNone || left.AsT0 is { ValueKind: JsonValueKind.Null }) return right;
+        if (right.IsNone || right.AsT0 is { ValueKind: JsonValueKind.Null }) return CreateNullElement();
 
-        if (left.AsT0 is JsonValue leftValue && leftValue.TryGetValue(out decimal leftNumber) && right.AsT0 is JsonValue rightValue && rightValue.TryGetValue(out decimal rightNumber))
+        if (left.AsT0 is { ValueKind: JsonValueKind.Number } && right.AsT0 is { ValueKind: JsonValueKind.Number })
         {
-            return JsonValue.Create(leftNumber + rightNumber);
+            return CreateElement(left.AsT0.GetDecimal() + right.AsT0.GetDecimal());
         }
         
-        return JsonValue.Create($"{ConvertToString(left.AsT0)}{ConvertToString(right.AsT0)}");
+        return CreateElement($"{ConvertToString(left.AsT0)}{ConvertToString(right.AsT0)}");
     }
     
-    private bool EvaluateEquality(Option<JsonNode?> left, Option<JsonNode?> right)
+    private bool EvaluateEquality(Option<JsonElement> left, Option<JsonElement> right)
     {
         if (left.IsSome != right.IsSome) return false;
         if (!left.IsSome) return true;
@@ -194,13 +240,10 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         return EvaluateEquality(left.AsT0, right.AsT0);
     }
     
-    private bool EvaluateEquality(JsonNode? left, JsonNode? right)
+    private bool EvaluateEquality(JsonElement left, JsonElement right)
     {
-        if (left is null) return right is null;
-        if (right is null) return false;
-
-        var kind = left.GetValueKind();
-        if (kind != right.GetValueKind()) return false;
+        var kind = left.ValueKind;
+        if (kind != right.ValueKind) return false;
 
         switch (kind)
         {
@@ -228,21 +271,21 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         }
     }
     
-    private bool EvaluateBetween(Expression.Between between, Option<JsonNode?> context)
+    private bool EvaluateBetween(Expression.Between between, Option<JsonElement> context)
     {
         throw new NotImplementedException();
     }
 
-    private bool EvaluateIsNull(Expression.IsNull isNull, Option<JsonNode?> context)
+    private bool EvaluateIsNull(Expression.IsNull isNull, Option<JsonElement> context)
     {
         var value = Evaluate(isNull.Expression, context);
 
-        var hasValue = value is { IsSome: true, AsT0: not null };
+        var hasValue = value is { IsSome: true, AsT0: { ValueKind: not JsonValueKind.Null } };
 
         return hasValue == isNull.Negate;
     }
         
-    private bool EvaluatePresence(Expression.Presence presence, Option<JsonNode?> context)
+    private bool EvaluatePresence(Expression.Presence presence, Option<JsonElement> context)
     {
         var value = Evaluate(presence.Expression, context);
 
@@ -251,9 +294,8 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         return isMissing == presence.Negate;
     }
 
-    private bool EvaluateIn(Expression.In inExpr, Option<JsonNode?> context)
+    private bool EvaluateIn(Expression.In inExpr, Option<JsonElement> context)
     {
-
         if (inExpr.StringMatches is not null)
         {
             var value = EvaluateToString(inExpr.Expression, context);
@@ -279,7 +321,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         }
     }
 
-    private bool EvaluateLike(Expression.Like like, Option<JsonNode?> context)
+    private bool EvaluateLike(Expression.Like like, Option<JsonElement> context)
     {
         var pattern = EvaluateToString(like.Pattern, context);
         var escape = like.Escape.SelectMany(x => EvaluateToString(x, context));
@@ -299,52 +341,29 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
         return LikeMatcher.IsMatch(pattern.AsT0, escapeChar, value.AsT0);
     }
 
-    internal static bool ConvertToBoolean(JsonNode? context)
+    internal static bool ConvertToBoolean(JsonElement context)
     {
-        if (context is not JsonValue jsonValue)
-        {
-            throw new ArgumentException($"Expected a boolean argument but got {context?.GetType().Name ?? "null"}");
-        }
-        
-        if (jsonValue.TryGetValue(out bool value))
-        {
-            return value;
-        }
-
-        throw new ArgumentException($"Expected a boolean argument but got {jsonValue.GetValueKind()}");
+        if (context.ValueKind == JsonValueKind.True) return true;
+        if (context.ValueKind == JsonValueKind.False) return false;
+  
+        throw new ArgumentException($"Expected a boolean argument but got {context.ValueKind}");
     }
 
-    internal static decimal ConvertToDecimal(JsonNode? context)
+    internal static decimal ConvertToDecimal(JsonElement context)
     {
-        if (context is not JsonValue jsonValue)
-        {
-            throw new ArgumentException($"Expected a decimal argument but got {context?.GetType().Name ?? "null"}");
-        }
-        
-        if (jsonValue.TryGetValue(out decimal value))
-        {
-            return value;
-        }
+        if (context.ValueKind == JsonValueKind.Number) return context.GetDecimal();
 
-        throw new ArgumentException($"Expected a decimal argument but got {jsonValue.GetValueKind()}");
+        throw new ArgumentException($"Expected a decimal argument but got {context.ValueKind}");
     }
     
-    internal static string ConvertToString(JsonNode? context)
+    internal static string ConvertToString(JsonElement context)
     {
-        if (context is not JsonValue jsonValue)
-        {
-            throw new ArgumentException($"Expected a decimal argument but got {context?.GetType().Name ?? "null"}");
-        }
-        
-        if (jsonValue.TryGetValue(out string? value))
-        {
-            return value;
-        }
+        if (context.ValueKind == JsonValueKind.String) return context.GetString()!;
 
-        throw new ArgumentException($"Expected a decimal argument but got {jsonValue.GetValueKind()}");
+        throw new ArgumentException($"Expected a string argument but got {context.ValueKind}");
     }
     
-    private Option<string?> EvaluateToString(Expression expr, Option<JsonNode?> context)
+    private Option<string?> EvaluateToString(Expression expr, Option<JsonElement> context)
     {
         var result = Evaluate(expr, context);
         

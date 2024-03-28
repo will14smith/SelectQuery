@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
+using System.Text.Json;
 using OneOf.Types;
 using SelectParser;
 
@@ -8,7 +8,7 @@ namespace SelectQuery.Evaluation;
 
 internal static class FunctionEvaluator
 {
-    public static Option<JsonNode?> Evaluate(string? name, IReadOnlyList<Option<JsonNode?>> arguments)
+    public static Option<JsonElement> Evaluate(string? name, IReadOnlyList<Option<JsonElement>> arguments)
     {
         var normalisedName = name?.ToLowerInvariant();
 
@@ -20,7 +20,7 @@ internal static class FunctionEvaluator
         };
     }
 
-    private static Option<JsonNode?> Lower(IReadOnlyList<Option<JsonNode?>> arguments)
+    private static Option<JsonElement> Lower(IReadOnlyList<Option<JsonElement>> arguments)
     {
         if (arguments.Count != 1)
         {
@@ -35,8 +35,8 @@ internal static class FunctionEvaluator
         
         return argument.AsT0 switch
         {
-            JsonValue value when value.TryGetValue(out string? stringValue) => JsonValue.Create(stringValue.ToLowerInvariant()),
-            null => null,
+            {  ValueKind: JsonValueKind.String } value => ExpressionEvaluator.CreateElement(value.GetString()?.ToLowerInvariant()),
+            { ValueKind: JsonValueKind.Null } => ExpressionEvaluator.CreateNullElement(),
             
             _ => throw new ArgumentException($"Expected a string argument but got {argument.GetType().Name}")
         };
