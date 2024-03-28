@@ -1,13 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
 public class JsonRecordWriter
 {
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new();
-
     private readonly FromClause _from;
     private readonly SelectClause _select;
 
@@ -17,7 +16,7 @@ public class JsonRecordWriter
         _select = select;
     }
 
-    public void Write(Utf8JsonWriter writer, object obj)
+    public void Write(Utf8JsonWriter writer, JsonNode? obj)
     {
         if (_select.IsT0)
         {
@@ -31,18 +30,18 @@ public class JsonRecordWriter
         }
     }
 
-    private static void WriteStar(Utf8JsonWriter writer, object obj)
+    private static void WriteStar(Utf8JsonWriter writer, JsonNode? obj)
     {
         JsonSerializer.Serialize(writer, obj);
     }
 
-    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, object obj)
+    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, JsonNode? obj)
     {
         for (var index = 0; index < columns.Count; index++)
         {
             var column = columns[index];
 
-            var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+            var result = ExpressionEvaluator.EvaluateOnTable(column.Expression, _from, obj);
             if (!result.IsSome)
             {
                 continue;

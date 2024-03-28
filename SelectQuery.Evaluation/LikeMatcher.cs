@@ -2,13 +2,12 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using SelectParser;
-using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
 internal class LikeMatcher
 {
-    public static bool IsMatch(string pattern, Option<char> escape, string value) => ToRegex(pattern, escape).IsMatch(value);
+    public static bool IsMatch(string pattern, Option<char> escape, string? value) => ToRegex(pattern, escape).IsMatch(value ?? string.Empty);
 
     private static Regex ToRegex(string pattern, Option<char> escape)
     {

@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -8,8 +9,6 @@ namespace SelectQuery.Evaluation;
 
 public class JsonLinesEvaluator
 {
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new();
-
     private readonly Query _query;
     private readonly JsonRecordWriter _recordWriter;
 
@@ -101,7 +100,7 @@ public class JsonLinesEvaluator
         return true;
     }
     
-    private Option<object> ReadRecord(ref JsonLinesReader lineReader)
+    private Option<JsonNode?> ReadRecord(ref JsonLinesReader lineReader)
     {
         if (!lineReader.Read())
         {
@@ -109,12 +108,13 @@ public class JsonLinesEvaluator
         }
 
         var reader = lineReader.Current;
-        return JsonSerializer.Deserialize<object>(ref reader);
+
+        return JsonNode.Parse(ref reader);
     }
 
-    private bool TestPredicate(object record)
+    private bool TestPredicate(JsonNode? record)
     {
-        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
+        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable(where.Condition, _query.From, record).Select(ExpressionEvaluator.ConvertToBoolean), _ => true);
 
         return wherePassed.IsSome && wherePassed.AsT0;
     }
