@@ -5,10 +5,10 @@ namespace SelectQuery.Evaluation;
 
 public ref struct JsonLinesReader
 {
-    private Span<byte> _buffer;
+    private ReadOnlySpan<byte> _buffer;
     public Utf8JsonReader Current { get; private set; }
     
-    public JsonLinesReader(Span<byte> buffer)
+    public JsonLinesReader(ReadOnlySpan<byte> buffer)
     {
         _buffer = buffer;
     }
