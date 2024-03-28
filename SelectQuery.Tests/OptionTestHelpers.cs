@@ -7,7 +7,6 @@ namespace SelectQuery.Tests
     {
         public static T AssertSome<T>(Option<T> option)
         {
-            Assert.NotNull(option);
             Assert.True(option.IsSome, $"Expecting Some({typeof(T).Name}) but got None instead");
             return option.AsT0;
         }

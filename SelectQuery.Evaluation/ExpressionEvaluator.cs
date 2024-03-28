@@ -1,16 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
-public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables)
+public struct ExpressionEvaluator(string tableAlias, JsonElement table)
 {
     private static readonly JsonElement True; 
     private static readonly JsonElement False; 
@@ -31,39 +29,34 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         }
     }
     
-    public static Option<JsonElement> EvaluateOnTable(Expression expression, FromClause from, JsonElement obj)
+    public static Option<JsonElement> EvaluateOnTable(Expression expression, FromClause from, JsonElement table)
     {
-        var tableName = from.Alias.Match(alias => alias, _ => "s3object");
-        
-        var tables = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
-        {
-            { tableName, obj }
-        };
-
-        var evaluator = new ExpressionEvaluator(tables);
+        var tableAlias = from.Alias.Match(alias => alias, _ => "s3object");
+        var evaluator = new ExpressionEvaluator(tableAlias, table);
         
         return evaluator.Evaluate(expression, new None());
     }
     
     public Option<JsonElement> Evaluate(Expression expression, Option<JsonElement> context)
     {
-        var value = expression.Match<Option<JsonElement>>(
-            strLiteral => CreateElement(strLiteral.Value),
-            numLiteral => CreateElement(numLiteral.Value),
-            boolLiteral => CreateElement(boolLiteral.Value),
-            identifier => EvaluateIdentifier(identifier, context),
-            qualified => EvaluateQualified(qualified, context),
-            function => EvaluateFunction(function.Function, context),
-            unary => EvaluateUnary(unary, context),
-            binary => EvaluateBinary(binary, context),
-            between => CreateElement(EvaluateBetween(between, context)),
-            isNull => CreateElement(EvaluateIsNull(isNull, context)),
-            presence => CreateElement(EvaluatePresence(presence, context)),
-            inExpr => CreateElement(EvaluateIn(inExpr, context)),
-            like => CreateElement(EvaluateLike(like, context))
-        );
-
-        return value;
+        return expression.Index switch
+        {
+            0 => CreateElement(expression.AsT0.Value),
+            1 => CreateElement(expression.AsT1.Value),
+            2 => CreateElement(expression.AsT2.Value),
+            3 => EvaluateIdentifier(expression.AsT3, context),
+            4 => EvaluateQualified(expression.AsT4, context),
+            5 => EvaluateFunction(expression.AsT5.Function, context),
+            6 => EvaluateUnary(expression.AsT6, context),
+            7 => EvaluateBinary(expression.AsT7, context),
+            8 => CreateElement(EvaluateBetween(expression.AsT8, context)),
+            9 => CreateElement(EvaluateIsNull(expression.AsT9, context)),
+            10 => CreateElement(EvaluatePresence(expression.AsT10, context)),
+            11 => CreateElement(EvaluateIn(expression.AsT11, context)),
+            12 => CreateElement(EvaluateLike(expression.AsT12, context)),
+            
+            _ => throw new ArgumentOutOfRangeException(nameof(expression))
+        };
     }
     
     internal static JsonElement CreateElement(string? value)
@@ -90,6 +83,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var reader = new Utf8JsonReader(stream.ToArray());
         return JsonElement.ParseValue(ref reader);
     }
+    
     internal static JsonElement CreateElement(bool value) => value ? True : False;
     internal static JsonElement CreateNullElement() => Null;
 
@@ -99,10 +93,20 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         {
             if (identifier.CaseSensitive)
             {
-                throw new NotImplementedException();
+                if (identifier.Name == tableAlias)
+                {
+                    return table;
+                }
+            }
+            else
+            {
+                if (string.Equals(identifier.Name, tableAlias, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return table;
+                }
             }
 
-            return tables.TryGetValue(identifier.Name, out var table) ? table : default;
+            return new None();
         }
 
         if (context.AsT0 is { ValueKind: JsonValueKind.Object })
@@ -119,8 +123,15 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
             }
             
             // slow: try match case-insensitive key
-            var entry = context.AsT0.EnumerateObject().FirstOrDefault(x => string.Equals(x.Name, identifier.Name, StringComparison.OrdinalIgnoreCase));
-            return entry.Value.ValueKind != JsonValueKind.Undefined ? entry.Value : new None();
+            foreach (var entry in context.AsT0.EnumerateObject())
+            {
+                if (string.Equals(entry.Name, identifier.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return entry.Value;
+                }
+            }
+
+            return new Option<JsonElement>();
         }
         
         throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {context.AsT0.ValueKind}");
@@ -149,7 +160,11 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var scalar = function.AsT1;
 
         var name = scalar.Identifier.Name;
-        var arguments = scalar.Arguments.Select(argument => Evaluate(argument, context)).ToList();
+        var arguments = new Option<JsonElement>[scalar.Arguments.Count];
+        for (var i = 0; i < scalar.Arguments.Count; i++)
+        {
+            arguments[i] = Evaluate(scalar.Arguments[i], context);
+        }
 
         return FunctionEvaluator.Evaluate(name, arguments);
     }
@@ -324,7 +339,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
     private bool EvaluateLike(Expression.Like like, Option<JsonElement> context)
     {
         var pattern = EvaluateToString(like.Pattern, context);
-        var escape = like.Escape.SelectMany(x => EvaluateToString(x, context));
+        var escape = like.Escape.IsSome ? EvaluateToString(like.Escape.Value!, context) : new Option<string?>();
         var value = EvaluateToString(like.Expression, context);
 
         if (pattern.IsNone || pattern.AsT0 is null || value.IsNone)
@@ -332,9 +347,9 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
             return false;
         }
 
-        if (escape .IsSome && escape.AsT0?.Length != 1)
+        if (escape.IsSome && escape.AsT0?.Length != 1)
         {
-            throw new InvalidOperationException($"Escape should be a single character, was '{escape}'");
+            throw new InvalidOperationException($"Escape should be a single character, was '{escape.AsT0}'");
         }
         var escapeChar = escape.Select(x => x![0]);
         
