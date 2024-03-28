@@ -3,6 +3,7 @@ using System.Text.Json;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
+using SelectQuery.Evaluation.Trees;
 
 namespace SelectQuery.Evaluation;
 
@@ -39,6 +40,9 @@ public class JsonLinesEvaluator
             var recordsProcessed = 0;
             var limit = _query.Limit.Match(static x => x.Limit, static () => int.MaxValue);
 
+            var qp = new QueryTreeCompiler().Build(_query);
+            qp.Execute(ref reader, writer);
+            
             while (ProcessRecord(ref reader, writer, outputBuffer, ref recordsProcessed))
             {
                 if (recordsProcessed >= limit)
