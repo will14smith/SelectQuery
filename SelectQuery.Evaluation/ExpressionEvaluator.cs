@@ -253,19 +253,30 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonNode?> tables)
 
     private bool EvaluateIn(Expression.In inExpr, Option<JsonNode?> context)
     {
-        var value = Evaluate(inExpr.Expression, context);
 
-        foreach (var matchExpr in inExpr.Matches)
+        if (inExpr.StringMatches is not null)
         {
-            var matchValue = Evaluate(matchExpr, context);
+            var value = EvaluateToString(inExpr.Expression, context);
+            if (value.IsNone) return false;
 
-            if (EvaluateEquality(value, matchValue))
-            {
-                return true;
-            }
+            return inExpr.StringMatches.Contains(value.AsT0);
         }
+        else
+        {
+            var value = Evaluate(inExpr.Expression, context);
 
-        return false;
+            foreach (var matchExpr in inExpr.Matches)
+            {
+                var matchValue = Evaluate(matchExpr, context);
+
+                if (EvaluateEquality(value, matchValue))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 
     private bool EvaluateLike(Expression.Like like, Option<JsonNode?> context)
