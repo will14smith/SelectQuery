@@ -166,8 +166,8 @@ public class EvaluatorTests
 
     private static Query ParseQuery(string query)
     {
-        var result = Parser.Parse(query);
-        return result.Value;
+        var result = NewParser.Parse(query);
+        return result.Value!;
     }
 
     private static byte[] Evaluate(Query query, string[] data)

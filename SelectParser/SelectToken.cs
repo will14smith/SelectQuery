@@ -3,6 +3,7 @@
 public enum SelectToken
 {
     None,
+    
     Identifier,
     // literals
     StringLiteral,

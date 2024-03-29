@@ -4,9 +4,9 @@ using OneOf.Types;
 
 namespace SelectParser;
 
-public struct Option<T> : IEquatable<Option<T>>
+public readonly struct Option<T> : IEquatable<Option<T>>
 {
-    public Option(T value)
+    private Option(T value)
     {
         HasValue = true;
         Value = value;

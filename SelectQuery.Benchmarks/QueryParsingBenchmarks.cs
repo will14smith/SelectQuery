@@ -2,8 +2,6 @@ using BenchmarkDotNet.Attributes;
 using SelectParser;
 using SelectParser.Queries;
 
-namespace SelectQuery.Benchmarks;
-
 [ShortRunJob]
 [MemoryDiagnoser]
 public class QueryParsingBenchmarks
@@ -27,6 +25,8 @@ public class QueryParsingBenchmarks
     
     [Benchmark]
     public Query Parse() => Parser.Parse(Query.QueryString).Value;
+    [Benchmark]
+    public Query ParseNew() => NewParser.Parse(Query.QueryString).Value!;
 
     public class TestCase
     {

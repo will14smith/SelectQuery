@@ -339,7 +339,7 @@ public struct ExpressionEvaluator(string tableAlias, JsonElement table)
     private bool EvaluateLike(Expression.Like like, Option<JsonElement> context)
     {
         var pattern = EvaluateToString(like.Pattern, context);
-        var escape = like.Escape.IsSome ? EvaluateToString(like.Escape.Value!, context) : new Option<string?>();
+        var escape = like.Escape.IsSome ? EvaluateToString(like.Escape.AsT0, context) : new Option<string?>();
         var value = EvaluateToString(like.Expression, context);
 
         if (pattern.IsNone || pattern.AsT0 is null || value.IsNone)
