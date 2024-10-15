@@ -168,7 +168,7 @@ public class ExpressionEvaluator
             return leftNum + rightNum;
         }
 
-        if (left.IsNone || left.Value is null) return right?.Value?.ToString();
+        if (left.IsNone || left.Value is null) return right.Value?.ToString();
         if (right.IsNone || right.Value is null) return null;
 
         return $"{left.Value}{right.Value}";
