@@ -6,7 +6,7 @@
       "extra-files": [
         {
           "type": "xml",
-          "path": "SelectQuery/SelectQuery.csproj",
+          "path": "SelectParser/SelectParser.csproj",
           "xpath": "//Project/PropertyGroup/Version"
         },
         {
