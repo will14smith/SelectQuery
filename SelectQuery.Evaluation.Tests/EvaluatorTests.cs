@@ -168,7 +168,12 @@ public class EvaluatorTests
     private static Query ParseQuery(string query)
     {
         var result = Parser.Parse(query);
-        return result.Value;
+        if (!result.Success)
+        {
+            throw new Exception("Failed to parse query: " + result.Error);
+        }
+        
+        return result.Value!;
     }
 
     private static byte[] Evaluate(Query query, string[] data)

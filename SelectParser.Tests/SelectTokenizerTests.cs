@@ -1,5 +1,4 @@
-﻿using System.Linq;
-using Xunit;
+﻿using Xunit;
 
 namespace SelectParser.Tests;
 
@@ -21,12 +20,11 @@ public class SelectTokenizerTests
     [InlineData("select", SelectToken.Select)]
     public void TestKeywordsAreParsedCorrectly(string input, SelectToken expected)
     {
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
+        var token = SelectTokenizer.Read(ref tokenizer);
 
-        var token = Assert.Single(output);
-        Assert.Equal(expected, token.Kind);
+        Assert.Equal(expected, token.Type);
     }
 
     [Theory]
@@ -38,12 +36,11 @@ public class SelectTokenizerTests
     [InlineData("\"SELECT\"", "\"SELECT\"")]
     public void TestIdentifiersAreParserCorrectly(string input, string expected)
     {
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
+        var token = SelectTokenizer.Read(ref tokenizer);
 
-        var token = Assert.Single(output);
-        Assert.Equal(SelectToken.Identifier, token.Kind);
+        Assert.Equal(SelectToken.Identifier, token.Type);
         Assert.Equal(expected, token.ToStringValue());
     }
 
@@ -52,12 +49,11 @@ public class SelectTokenizerTests
     [InlineData("'Te''st'", "'Te''st'")]
     public void TestStringLiteralsAreParserCorrectly(string input, string expected)
     {
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
+        var token = SelectTokenizer.Read(ref tokenizer);
 
-        var token = Assert.Single(output);
-        Assert.Equal(SelectToken.StringLiteral, token.Kind);
+        Assert.Equal(SelectToken.StringLiteral, token.Type);
         Assert.Equal(expected, token.ToStringValue());
     }
 
@@ -71,12 +67,11 @@ public class SelectTokenizerTests
     [InlineData("0.10", "0.10")]
     public void TestNumberLiteralsAreParserCorrectly(string input, string expected)
     {
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
+        var token = SelectTokenizer.Read(ref tokenizer);
 
-        var token = Assert.Single(output);
-        Assert.Equal(SelectToken.NumberLiteral, token.Kind);
+        Assert.Equal(SelectToken.NumberLiteral, token.Type);
         Assert.Equal(expected, token.ToStringValue());
     }
 
@@ -87,12 +82,11 @@ public class SelectTokenizerTests
     [InlineData("false", "false")]
     public void TestBooleanLiteralsAreParserCorrectly(string input, string expected)
     {
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
+        var token = SelectTokenizer.Read(ref tokenizer);
 
-        var token = Assert.Single(output);
-        Assert.Equal(SelectToken.BooleanLiteral, token.Kind);
+        Assert.Equal(SelectToken.BooleanLiteral, token.Type);
         Assert.Equal(expected, token.ToStringValue());
     }
 
@@ -132,28 +126,30 @@ public class SelectTokenizerTests
     [InlineData("ESCAPE", SelectToken.Escape)]
     public void TestOperatorsAreParsedCorrectly(string input, SelectToken expected)
     {
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
+        var token = SelectTokenizer.Read(ref tokenizer);
 
-        var token = Assert.Single(output);
-        Assert.Equal(expected, token.Kind);
+        Assert.Equal(expected, token.Type);
     }
 
     [Fact]
     public void TestComplexQueryIsParsedCorrectly()
     {
         var input = "SELECT * FROM Test WHERE m = 5";
-        var expected = new[]
+        var expectedTokens = new[]
         {
             SelectToken.Select, SelectToken.Star,
             SelectToken.From, SelectToken.Identifier,
-            SelectToken.Where,SelectToken.Identifier,SelectToken.Equal,SelectToken.NumberLiteral
+            SelectToken.Where,SelectToken.Identifier,SelectToken.Equal,SelectToken.NumberLiteral,
+            SelectToken.Eof
         };
-        var tokenizer = new SelectTokenizer();
+        var tokenizer = new SelectTokenizer(input);
 
-        var output = tokenizer.Tokenize(input).ToList();
-
-        Assert.Equal(expected, output.Select(x => x.Kind));
+        foreach (var expectedToken in expectedTokens)
+        {
+            var token = SelectTokenizer.Read(ref tokenizer);
+            Assert.Equal(expectedToken, token.Type);
+        }
     }
 }
