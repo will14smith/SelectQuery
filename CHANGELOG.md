@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.2.0...SelectQuery-v1.3.0) (2024-10-15)
+
+
+### Features
+
+* Add optimised method for evaluating "IN" when all matches are strings ([#20](https://github.com/will14smith/SelectQuery/issues/20)) ([f6efb5b](https://github.com/will14smith/SelectQuery/commit/f6efb5b7ccf6c7940953f1c74e224fd4ba09aced))
+
 ## [1.2.0](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.1.1...SelectQuery-v1.2.0) (2024-10-15)
 
 
