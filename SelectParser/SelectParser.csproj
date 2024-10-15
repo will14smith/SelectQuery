@@ -7,7 +7,7 @@
 
     <PackageId>SelectParser</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Authors>will14smith</Authors>
     <RepositoryUrl>https://github.com/will14smith/SelectQuery</RepositoryUrl>
 
@@ -17,11 +17,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" PrivateAssets="All" />
-    <PackageReference Include="OneOf" Version="3.0.216" />
-    <PackageReference Include="OneOf.Extended" Version="3.0.216" />
-    <PackageReference Include="OneOf.SourceGenerator" Version="3.0.216" />
-    <PackageReference Include="Superpower" Version="2.3.0" />
+    <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" PrivateAssets="All"/>
+    <PackageReference Include="OneOf" Version="3.0.216"/>
+    <PackageReference Include="OneOf.Extended" Version="3.0.216"/>
+    <PackageReference Include="OneOf.SourceGenerator" Version="3.0.216"/>
+    <PackageReference Include="Superpower" Version="2.3.0"/>
   </ItemGroup>
 
 </Project>
