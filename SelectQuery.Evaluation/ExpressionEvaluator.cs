@@ -187,19 +187,29 @@ public class ExpressionEvaluator
 
     private bool EvaluateIn(Expression.In inExpr, object obj)
     {
-        var value = Evaluate<object>(inExpr.Expression, obj);
-
-        foreach (var matchExpr in inExpr.Matches)
+        if (inExpr.StringMatches is not null)
         {
-            var matchValue = Evaluate<object>(matchExpr, obj);
+            var value = EvaluateToString(inExpr.Expression, obj);
+            if (value.IsNone) return false;
 
-            if (EvaluateEquality(value, matchValue))
-            {
-                return true;
-            }
+            return inExpr.StringMatches.Contains(value.AsT0);
         }
+        else
+        {
+            var value = Evaluate<object>(inExpr.Expression, obj);
 
-        return false;
+            foreach (var matchExpr in inExpr.Matches)
+            {
+                var matchValue = Evaluate<object>(matchExpr, obj);
+
+                if (EvaluateEquality(value, matchValue))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
     }
 
     private bool EvaluateLike(Expression.Like like, object obj)
