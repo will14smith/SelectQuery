@@ -111,7 +111,6 @@ public class SelectTokenizerTests
     [InlineData("AND", SelectToken.And)]
     [InlineData("&&", SelectToken.And)]
     [InlineData("OR", SelectToken.Or)]
-    [InlineData("||", SelectToken.Or)]
 
     [InlineData("<", SelectToken.Lesser)]
     [InlineData(">", SelectToken.Greater)]
@@ -125,6 +124,7 @@ public class SelectTokenizerTests
     [InlineData("+", SelectToken.Add)]
     [InlineData("/", SelectToken.Divide)]
     [InlineData("%", SelectToken.Modulo)]
+    [InlineData("||", SelectToken.Concat)]
 
     [InlineData("BETWEEN", SelectToken.Between)]
     [InlineData("IN", SelectToken.In)]
