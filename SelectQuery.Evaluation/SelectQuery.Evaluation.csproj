@@ -7,7 +7,7 @@
 
         <PackageId>SelectQuery.Evaluation</PackageId>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <Version>1.1.1</Version>
+        <Version>1.2.0</Version>
         <Authors>will14smith</Authors>
         <RepositoryUrl>https://github.com/will14smith/SelectQuery</RepositoryUrl>
         <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -26,7 +26,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Content Include="..\README.md" Pack="true" PackagePath="\" />
+        <Content Include="..\README.md" Pack="true" PackagePath="\"/>
     </ItemGroup>
 
 </Project>
