@@ -101,7 +101,7 @@ public class JsonLinesEvaluator
         return true;
     }
     
-    private Option<object> ReadRecord(ref JsonLinesReader lineReader)
+    private Option<object?> ReadRecord(ref JsonLinesReader lineReader)
     {
         if (!lineReader.Read())
         {
@@ -112,7 +112,7 @@ public class JsonLinesEvaluator
         return JsonSerializer.Deserialize<object>(ref reader);
     }
 
-    private bool TestPredicate(object record)
+    private bool TestPredicate(object? record)
     {
         var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
 

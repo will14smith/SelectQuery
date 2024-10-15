@@ -10,26 +10,26 @@ namespace SelectQuery.Evaluation;
 
 public class ExpressionEvaluator
 {
-    public Option<T> Evaluate<T>(Expression expression, object obj)
+    public Option<T?> Evaluate<T>(Expression expression, object? obj)
     {
         var value = expression.Match(
-            strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
-            numLiteral => (T)(object)EvaluateNumberLiteral(numLiteral),
-            boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
+            strLiteral => (T?)(object?)EvaluateStringLiteral(strLiteral),
+            numLiteral => (T?)(object?)EvaluateNumberLiteral(numLiteral),
+            boolLiteral => (T?)(object?)EvaluateBooleanLiteral(boolLiteral),
             identifier => EvaluateIdentifier<T>(identifier, obj),
             qualified => EvaluateQualified<T>(qualified, obj),
             function => EvaluateFunction<T>(function.Function, obj),
             unary => EvaluateUnary<T>(unary, obj),
             binary => EvaluateBinary<T>(binary, obj),
-            between => (T)(object)EvaluateBetween(between, obj),
-            isNull => (T)(object)EvaluateIsNull(isNull, obj),
-            presence => (T)(object)EvaluatePresence(presence, obj),
-            inExpr => (T)(object)EvaluateIn(inExpr, obj),
-            like => (T)(object)EvaluateLike(like, obj)
+            between => (T?)(object?)EvaluateBetween(between, obj),
+            isNull => (T?)(object?)EvaluateIsNull(isNull, obj),
+            presence => (T?)(object?)EvaluatePresence(presence, obj),
+            inExpr => (T?)(object?)EvaluateIn(inExpr, obj),
+            like => (T?)(object?)EvaluateLike(like, obj)
         );
 
         // normalize result values, utf8json parses numbers are decimal but we want doubles
-        if (value.Value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
+        if (value.Value is double dbl) return (T?)(object?)Convert.ToDecimal(dbl);
         return value;
     }
     private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
@@ -47,27 +47,27 @@ public class ExpressionEvaluator
         return boolLiteral.Value;
     }
 
-    private Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
+    private Option<T?> EvaluateIdentifier<T>(Expression.Identifier identifier, object? obj)
     {
         if (obj is null)
         {
             return default;
         }
 
-        if (obj is IReadOnlyDictionary<string, object> dict)
+        if (obj is IReadOnlyDictionary<string, object?> dict)
         {
             // fast: match exact key
             if (dict.TryGetValue(identifier.Name, out var result))
-                return (T) result;
+                return (T?) result;
 
             if (identifier.CaseSensitive)
             {
                 return new None();
             }
 
-            // slow: try match case-insensitive key, ideally the dictionary would be case insensitive but need some custom deserialization logic to support that
+            // slow: try match case-insensitive key, ideally the dictionary would be case-insensitive but need some custom deserialization logic to support that
             var entry = dict.FirstOrDefault(x => string.Equals(x.Key, identifier.Name, StringComparison.OrdinalIgnoreCase));
-            return entry.Key != null ? (Option<T>) (T) entry.Value : new None();
+            return entry.Key != null ? (T?) entry.Value : new None();
         }
 
         if (obj is JsonElement { ValueKind: JsonValueKind.Object } json)
@@ -85,20 +85,20 @@ public class ExpressionEvaluator
 
             // slow: try match case-insensitive key, ideally the dictionary would be case insensitive but need some custom deserialization logic to support that
             var entry = json.EnumerateObject().FirstOrDefault(x => string.Equals(x.Name, identifier.Name, StringComparison.OrdinalIgnoreCase));
-            return entry.Value.ValueKind != JsonValueKind.Undefined ? (Option<T>) (T) (object) entry.Value : new None();
+            return entry.Value.ValueKind != JsonValueKind.Undefined ? (T?) (object?) entry.Value : new None();
         }
         
         throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
     }
 
-    private Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
+    private Option<T?> EvaluateQualified<T>(Expression.Qualified qualified, object? obj)
     {
         var target = EvaluateIdentifier<object>(qualified.Qualification, obj);
 
         return target.SelectMany(obj => Evaluate<T>(qualified.Expression, obj));
     }
     
-    private Option<T> EvaluateFunction<T>(Function function, object obj)
+    private Option<T?> EvaluateFunction<T>(Function function, object? obj)
     {
         if (!function.IsT1)
         {
@@ -113,23 +113,23 @@ public class ExpressionEvaluator
         return FunctionEvaluator.Evaluate<T>(name, arguments);
     }
 
-    private Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj) =>
+    private Option<T?> EvaluateUnary<T>(Expression.Unary unary, object? obj) =>
         unary.Operator switch
         {
-            UnaryOperator.Not => Evaluate<bool>(unary.Expression, obj).Select(value => (T) (object) !value),
-            UnaryOperator.Negate => Evaluate<decimal>(unary.Expression, obj).Select(value => (T) (object) -value),
+            UnaryOperator.Not => Evaluate<bool>(unary.Expression, obj).Select(value => (T?) (object?) !value),
+            UnaryOperator.Negate => Evaluate<decimal>(unary.Expression, obj).Select(value => (T?) (object?) -value),
 
             _ => throw new ArgumentOutOfRangeException()
         };
 
-    private T EvaluateBinary<T>(Expression.Binary binary, object obj)
+    private T? EvaluateBinary<T>(Expression.Binary binary, object? obj)
     {
         var leftOpt = Evaluate<object>(binary.Left, obj);
         var rightOpt = Evaluate<object>(binary.Right, obj);
 
         if (binary.Operator == BinaryOperator.Add)
         {
-            return (T) EvaluateAddition(leftOpt, rightOpt);
+            return (T?) EvaluateAddition(leftOpt, rightOpt);
         }
 
         var left = leftOpt.Value;
@@ -138,7 +138,7 @@ public class ExpressionEvaluator
         // propagate nulls
         if (leftOpt.IsNone || left == null || rightOpt.IsNone || right == null) return default;
 
-        return (T) (object) (binary.Operator switch
+        return (T?) (object?) (binary.Operator switch
         {
             BinaryOperator.And => ConvertToBoolean(left) && ConvertToBoolean(right),
             BinaryOperator.Or => ConvertToBoolean(left) || ConvertToBoolean(right),
@@ -161,7 +161,7 @@ public class ExpressionEvaluator
         });
     }
 
-    private object EvaluateAddition(Option<object> left, Option<object> right)
+    private object? EvaluateAddition(Option<object?> left, Option<object?> right)
     {
         if (left.Value is decimal leftNum && right.Value is decimal rightNum)
         {
@@ -174,7 +174,7 @@ public class ExpressionEvaluator
         return $"{left.Value}{right.Value}";
     }
 
-    private bool EvaluateEquality(object left, object right)
+    private bool EvaluateEquality(object? left, object? right)
     {
         left = NormaliseValue(left);
         right = NormaliseValue(right);
@@ -182,12 +182,12 @@ public class ExpressionEvaluator
         return Equals(left, right);
     }
     
-    private bool EvaluateBetween(Expression.Between between, object obj)
+    private bool EvaluateBetween(Expression.Between between, object? obj)
     {
         throw new NotImplementedException();
     }
 
-    private bool EvaluateIsNull(Expression.IsNull isNull, object obj)
+    private bool EvaluateIsNull(Expression.IsNull isNull, object? obj)
     {
         var value = Evaluate<object>(isNull.Expression, obj);
 
@@ -196,7 +196,7 @@ public class ExpressionEvaluator
         return hasValue == isNull.Negate;
     }
         
-    private bool EvaluatePresence(Expression.Presence presence, object obj)
+    private bool EvaluatePresence(Expression.Presence presence, object? obj)
     {
         var value = Evaluate<object>(presence.Expression, obj);
 
@@ -205,7 +205,7 @@ public class ExpressionEvaluator
         return isMissing == presence.Negate;
     }
 
-    private bool EvaluateIn(Expression.In inExpr, object obj)
+    private bool EvaluateIn(Expression.In inExpr, object? obj)
     {
         if (inExpr.StringMatches is not null)
         {
@@ -239,7 +239,7 @@ public class ExpressionEvaluator
         }
     }
 
-    private bool EvaluateLike(Expression.Like like, object obj)
+    private bool EvaluateLike(Expression.Like like, object? obj)
     {
         var pattern = EvaluateToString(like.Pattern, obj);
         var escape = like.Escape.SelectMany(x => EvaluateToString(x, obj));
@@ -250,16 +250,16 @@ public class ExpressionEvaluator
             return false;
         }
 
-        if (escape.IsSome && escape.AsT0.Length != 1)
+        if (escape.IsSome && escape.AsT0?.Length != 1)
         {
             throw new InvalidOperationException($"Escape should be a single character, was '{escape.AsT0}'");
         }
-        var escapeChar = escape.Select(x => x[0]);
+        var escapeChar = escape.SelectMany(x => x is not null ? (Option<char>) x[0] : new None());
             
-        return LikeMatcher.IsMatch(pattern.AsT0, escapeChar, value.AsT0);
+        return LikeMatcher.IsMatch(pattern.AsT0 ?? string.Empty, escapeChar, value.AsT0 ?? string.Empty);
     }
 
-    internal static bool ConvertToBoolean(object obj)
+    internal static bool ConvertToBoolean(object? obj)
     {
         return obj switch
         {
@@ -270,7 +270,7 @@ public class ExpressionEvaluator
         };
     }
 
-    internal static decimal ConvertToDecimal(object obj)
+    internal static decimal ConvertToDecimal(object? obj)
     {
         return obj switch
         {
@@ -292,7 +292,7 @@ public class ExpressionEvaluator
         };
     }
     
-    private Option<string> EvaluateToString(Expression expr, object obj)
+    private Option<string?> EvaluateToString(Expression expr, object? obj)
     {
         var valueObj = Evaluate<object>(expr, obj);
         if (valueObj.IsNone)
@@ -310,7 +310,7 @@ public class ExpressionEvaluator
         };
     }
     
-    internal static object NormaliseValue(object value) =>
+    internal static object? NormaliseValue(object? value) =>
         value switch
         {
             JsonElement { ValueKind: JsonValueKind.String } json => json.GetString(),
@@ -324,11 +324,11 @@ public class ExpressionEvaluator
 
 public static class ExpressionEvaluatorExtensions
 {
-    public static Option<T> EvaluateOnTable<T>(this ExpressionEvaluator evaluator, Expression expression, FromClause from, object obj)
+    public static Option<T?> EvaluateOnTable<T>(this ExpressionEvaluator evaluator, Expression expression, FromClause from, object? obj)
     {
         var tableName = from.Alias.Match(alias => alias, _ => "s3object");
         
-        var input = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+        var input = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             { tableName, obj }
         };

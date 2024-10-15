@@ -17,7 +17,7 @@ public class JsonRecordWriter
         _select = select;
     }
 
-    public void Write(Utf8JsonWriter writer, object obj)
+    public void Write(Utf8JsonWriter writer, object? obj)
     {
         if (_select.IsT0)
         {
@@ -31,12 +31,12 @@ public class JsonRecordWriter
         }
     }
 
-    private static void WriteStar(Utf8JsonWriter writer, object obj)
+    private static void WriteStar(Utf8JsonWriter writer, object? obj)
     {
         JsonSerializer.Serialize(writer, obj);
     }
 
-    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, object obj)
+    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, object? obj)
     {
         for (var index = 0; index < columns.Count; index++)
         {

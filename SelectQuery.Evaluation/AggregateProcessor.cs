@@ -17,7 +17,7 @@ internal class AggregateProcessor
         _columns = ColumnState.CreateForQuery(query);
     }
 
-    public void ProcessRecord(object record)
+    public void ProcessRecord(object? record)
     {
         foreach (var column in _columns)
         {
@@ -85,10 +85,10 @@ internal class AggregateProcessor
             );
         }
         
-        public abstract void ProcessRecord(object record);
+        public abstract void ProcessRecord(object? record);
         public abstract void WriteResult(Utf8JsonWriter writer);
 
-        protected Option<T> Evaluate<T>(Expression expression, object record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, _query.From, record);
+        protected Option<T?> Evaluate<T>(Expression expression, object? record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, _query.From, record);
 
         private class AverageColumnState : ColumnState
         {
@@ -98,7 +98,7 @@ internal class AggregateProcessor
             
             public AverageColumnState(Column column, Query query, AggregateFunction.Average average) : base(column, query) => _average = average;
 
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(object? record)
             {
                 var value = Evaluate<object>(_average.Expression, record);
                 if (value.IsNone)
@@ -132,7 +132,7 @@ internal class AggregateProcessor
             
             public CountColumnState(Column column, Query query, AggregateFunction.Count count) : base(column, query) => _count = count;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(object? record)
             {
                 if (!_count.Expression.IsNone)
                 {
@@ -159,7 +159,7 @@ internal class AggregateProcessor
             
             public MaxColumnState(Column column, Query query, AggregateFunction.Max max) : base(column, query) => _max = max;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(object? record)
             {
                 var result = Evaluate<object>(_max.Expression, record);
                 if (result.IsNone)
@@ -194,7 +194,7 @@ internal class AggregateProcessor
 
             public MinColumnState(Column column, Query query, AggregateFunction.Min min) : base(column, query) => _min = min;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(object? record)
             {
                 var result = Evaluate<object>(_min.Expression, record);
                 if (result.IsNone)
@@ -229,7 +229,7 @@ internal class AggregateProcessor
             
             public SumColumnState(Column column, Query query, AggregateFunction.Sum sum) : base(column, query) => _sum = sum;
             
-            public override void ProcessRecord(object record)
+            public override void ProcessRecord(object? record)
             {
                 var value = Evaluate<object>(_sum.Expression, record);
                 if (value.IsNone)
