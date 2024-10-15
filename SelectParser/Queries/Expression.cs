@@ -491,7 +491,7 @@ public partial class Expression : OneOfBase<Expression.StringLiteral, Expression
             {
                 var hashCode = Expression?.GetHashCode() ?? 0;
                 hashCode = (hashCode * 397) ^ (Pattern?.GetHashCode() ?? 0);
-                hashCode = (hashCode * 397) ^ (Escape?.GetHashCode() ?? 0);
+                hashCode = (hashCode * 397) ^ Escape.GetHashCode();
                 return hashCode;
             }
         }
