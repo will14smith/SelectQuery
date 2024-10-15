@@ -7,22 +7,31 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+      pull-requests: write
+      packages: write
+      
     steps:
     - uses: actions/checkout@v4
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
-    - name: Install dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --configuration Release --no-restore -p:Version=1.0.${{github.run_number}}
-    - name: Package
+        
+    - name: Test
+      run: dotnet test
+
+    - name: Release
+      id: release
+      uses: googleapis/release-please-action@v4
+  
+    - name: Create package
+      if: ${{ steps.release.outputs.release_created }}
       run: |
-        dotnet pack SelectParser/SelectParser.csproj --configuration Release --no-build -o artifacts/ -p:PackageVersion=1.0.${{github.run_number}}
-        dotnet pack SelectQuery.Evaluation/SelectQuery.Evaluation.csproj --configuration Release --no-build -o artifacts/ -p:PackageVersion=1.0.${{github.run_number}}
-    - name: Push
-      run: |
-        dotnet nuget push ./artifacts/SelectParser.*.nupkg --skip-duplicate --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
-        dotnet nuget push ./artifacts/SelectQuery.Evaluation.*.nupkg --skip-duplicate --api-key ${{secrets.NUGET_API_KEY}} --source https://api.nuget.org/v3/index.json
+        dotnet pack SelectParser/SelectParser.csproj --configuration Release -o artifacts/
+        dotnet pack SelectQuery.Evaluation/SelectQuery.Evaluation.csproj --configuration Release -o artifacts/
+  
+    - name: Push package to GPR
+      if: ${{ steps.release.outputs.release_created }}
+      run: dotnet nuget push ./artifacts/*.nupkg --skip-duplicate --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json

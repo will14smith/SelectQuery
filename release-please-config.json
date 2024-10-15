@@ -1,0 +1,20 @@
+﻿{
+  "packages": {
+    ".": {
+      "package-name": "SelectQuery",
+      "release-type": "simple",
+      "extra-files": [
+        {
+          "type": "xml",
+          "path": "SelectQuery/SelectQuery.csproj",
+          "xpath": "//Project/PropertyGroup/Version"
+        },
+        {
+          "type": "xml",
+          "path": "SelectQuery.Evaluation/SelectQuery.Evaluation.csproj",
+          "xpath": "//Project/PropertyGroup/Version"
+        }
+      ]
+    }
+  }
+}
