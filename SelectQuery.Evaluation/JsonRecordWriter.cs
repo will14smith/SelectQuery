@@ -6,8 +6,6 @@ namespace SelectQuery.Evaluation;
 
 public class JsonRecordWriter
 {
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new();
-
     private readonly FromClause _from;
     private readonly SelectClause _select;
 
@@ -17,7 +15,7 @@ public class JsonRecordWriter
         _select = select;
     }
 
-    public void Write(Utf8JsonWriter writer, object? obj)
+    public void Write(Utf8JsonWriter writer, JsonElement obj)
     {
         if (_select.IsT0)
         {
@@ -31,25 +29,25 @@ public class JsonRecordWriter
         }
     }
 
-    private static void WriteStar(Utf8JsonWriter writer, object? obj)
+    private static void WriteStar(Utf8JsonWriter writer, JsonElement obj)
     {
-        JsonSerializer.Serialize(writer, obj);
+        obj.WriteTo(writer);
     }
 
-    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, object? obj)
+    private void WriteColumns(Utf8JsonWriter writer, IReadOnlyList<Column> columns, JsonElement obj)
     {
         for (var index = 0; index < columns.Count; index++)
         {
             var column = columns[index];
 
-            var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+            var result = ExpressionEvaluator.EvaluateOnTable(column.Expression, _from, obj);
             if (!result.IsSome)
             {
                 continue;
             }
             
             writer.WritePropertyName(GetColumnName(index, column));
-            JsonSerializer.Serialize(writer, result.AsT0);
+            result.AsT0.WriteTo(writer);
         }
     }
 

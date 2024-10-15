@@ -1,25 +1,26 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using OneOf.Types;
 using SelectParser;
 
 namespace SelectQuery.Evaluation;
 
-internal class FunctionEvaluator
+internal static class FunctionEvaluator
 {
-    public static Option<T?> Evaluate<T>(string name, IReadOnlyList<Option<object?>> arguments)
+    public static Option<JsonElement> Evaluate(string? name, IReadOnlyList<Option<JsonElement>> arguments)
     {
         var normalisedName = name?.ToLowerInvariant();
 
-        switch (normalisedName)
+        return normalisedName switch
         {
-            case "lower": return Lower<T>(arguments);
+            "lower" => Lower(arguments),
             
-            default: throw new ArgumentOutOfRangeException($"Scalar function '{name}' is not supported", nameof(name));
-        }
+            _ => throw new ArgumentOutOfRangeException($"Scalar function '{name}' is not supported", nameof(name))
+        };
     }
 
-    private static Option<T?> Lower<T>(IReadOnlyList<Option<object?>> arguments)
+    private static Option<JsonElement> Lower(IReadOnlyList<Option<JsonElement>> arguments)
     {
         if (arguments.Count != 1)
         {
@@ -34,6 +35,6 @@ internal class FunctionEvaluator
 
         var stringValue = ExpressionEvaluator.ConvertToString(argument.Value);
         
-        return (T?)(object?)stringValue?.ToLowerInvariant();
+        return ExpressionEvaluator.CreateElement(stringValue?.ToLowerInvariant());
     }
 }

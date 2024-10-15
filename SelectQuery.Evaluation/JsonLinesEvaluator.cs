@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -8,8 +9,6 @@ namespace SelectQuery.Evaluation;
 
 public class JsonLinesEvaluator
 {
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new();
-
     private readonly Query _query;
     private readonly JsonRecordWriter _recordWriter;
 
@@ -66,15 +65,16 @@ public class JsonLinesEvaluator
                 break;
             }
 
-            var record = readResult.AsT0;
-            if (TestPredicate(record))
+            using var record = readResult.AsT0;
+            var rootElement = record.RootElement;
+            if (TestPredicate(rootElement))
             {
                 if (recordsProcessed++ >= limit)
                 {
                     break;
                 }
                     
-                state.ProcessRecord(record);
+                state.ProcessRecord(rootElement);
             }
         }
 
@@ -90,18 +90,19 @@ public class JsonLinesEvaluator
             return false;
         }
 
-        var record = readResult.AsT0;
-        if (TestPredicate(record))
+        using var record = readResult.AsT0;
+        var rootElement = record.RootElement;
+        if (TestPredicate(rootElement))
         {
             recordsProcessed++;
-            _recordWriter.Write(writer, record);
+            _recordWriter.Write(writer, rootElement);
             WriteEndRecord(writer, outputBuffer);
         }
 
         return true;
     }
     
-    private Option<object?> ReadRecord(ref JsonLinesReader lineReader)
+    private Option<JsonDocument> ReadRecord(ref JsonLinesReader lineReader)
     {
         if (!lineReader.Read())
         {
@@ -109,12 +110,13 @@ public class JsonLinesEvaluator
         }
 
         var reader = lineReader.Current;
-        return JsonSerializer.Deserialize<object>(ref reader);
+
+        return JsonDocument.ParseValue(ref reader);
     }
 
-    private bool TestPredicate(object? record)
+    private bool TestPredicate(JsonElement record)
     {
-        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
+        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable(where.Condition, _query.From, record).Select(ExpressionEvaluator.ConvertToBoolean), _ => true);
 
         return wherePassed.IsSome && wherePassed.AsT0;
     }
