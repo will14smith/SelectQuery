@@ -32,16 +32,8 @@ internal class FunctionEvaluator
             return new None();
         }
 
-        var value = argument.Value;
-
-        if (value is not (null or string))
-        {
-            throw new ArgumentException($"Expected a string argument but got {value.GetType().Name}");
-        }
-
-
-        var stringValue = value as string;
-
+        var stringValue = ExpressionEvaluator.ConvertToString(argument.Value);
+        
         return (T)(object)stringValue?.ToLowerInvariant();
     }
 }
