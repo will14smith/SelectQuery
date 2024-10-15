@@ -22,7 +22,7 @@
     <PackageReference Include="OneOf" Version="3.0.216"/>
     <PackageReference Include="OneOf.Extended" Version="3.0.216"/>
     <PackageReference Include="OneOf.SourceGenerator" Version="3.0.216"/>
-    <PackageReference Include="Superpower" Version="2.3.0"/>
+    <PackageReference Include="System.Memory" Version="4.5.5" />
   </ItemGroup>
 
   <ItemGroup>

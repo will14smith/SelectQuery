@@ -1,28 +1,40 @@
 ﻿using SelectParser.Queries;
-using Superpower;
-using Superpower.Model;
 using Xunit;
 
 namespace SelectParser.Tests;
 
-public class ParserTestHelpers
+public static class ParserTestHelpers
 {
-    public static TokenListParserResult<SelectToken, T> Parse<T>(TokenListParser<SelectToken, T> parser, string input)
+    public delegate Parser.Result<T> ParseFn<T>(ref SelectTokenizer tokenizer);
+
+    public static Parser.Result<T> Parse<T>(ParseFn<T> parser, string input)
     {
-        var tokenizer = new SelectTokenizer();
-        var tokens = tokenizer.Tokenize(input);
-        return parser.AtEnd().TryParse(tokens);
+        var tokenizer = new SelectTokenizer(input);
+        var result = parser(ref tokenizer);
+
+        var final = SelectTokenizer.Read(ref tokenizer);
+        if (final.Type != SelectToken.Eof)
+        {
+            if (!result.Success)
+            {
+                Assert.Fail($"Expected EOF, but got error: {result.Error}");
+            }
+            
+            Assert.Fail($"Expected EOF, but got {final.Type}");
+        }
+
+        return result;
     }
         
-    public static T AssertSuccess<T>(TokenListParserResult<SelectToken, T> result)
+    public static T AssertSuccess<T>(Parser.Result<T> result)
     {
-        Assert.True(result.HasValue, result.ToString());
-        return result.Value;
+        Assert.True(result.Success, result.Error ?? "unknown error");
+        return result.Value!;
     }
 
-    public static void AssertFailed<T>(TokenListParserResult<SelectToken, T> result)
+    public static void AssertFailed<T>(Parser.Result<T> result)
     {
-        Assert.False(result.HasValue);
+        Assert.False(result.Success, "parse succeeded but shouldn't have");
     }
 
     public static T AssertSome<T>(Option<T> option)

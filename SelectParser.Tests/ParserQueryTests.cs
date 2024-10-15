@@ -96,7 +96,7 @@ public class ParserQueryTests
     {
         var input = "SELECT * FROM test ORDER BY col1 WHERE col2";
 
-        var result = Parse(Parser.Query, input);
+        var result = Parser.Parse(input);
 
         AssertFailed(result);
     }
