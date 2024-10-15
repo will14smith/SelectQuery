@@ -63,6 +63,7 @@ public class EvaluatorTests
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NOT NULL", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":null}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS MISSING", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":3}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NOT MISSING", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":3}" }, 2)]
+    [InlineData("SELECT 1 FROM s3object s WHERE s.a = s.b||'x'", new [] { @"{""a"":""ax"", ""b"":""a""}", @"{""a"":""a"",""b"":""a""}", @"{""a"":""a""}" }, 1)]
     public void WhereQueries(string queryString, string[] records, int expectedCount)
     {
         var query = ParseQuery(queryString);

@@ -60,14 +60,14 @@ public class SelectTokenizer : Tokenizer<SelectToken>
                 .Select(f => f == TextSpan.None ? n : new TextSpan(n.Source, n.Position, n.Length + f.Length + 1)));
 
     private static readonly TextParser<SelectToken> And = Span.EqualTo("&&").Value(SelectToken.And);
-    private static readonly TextParser<SelectToken> Or = Span.EqualTo("||").Value(SelectToken.Or);
     private static readonly TextParser<SelectToken> LesserOrEqual = Span.EqualTo("<=").Value(SelectToken.LesserOrEqual);
     private static readonly TextParser<SelectToken> GreaterOrEqual = Span.EqualTo(">=").Value(SelectToken.GreaterOrEqual);
     private static readonly TextParser<SelectToken> Equal = Span.EqualTo("==").Value(SelectToken.Equal);
     private static readonly TextParser<SelectToken> NotEqual = Span.EqualTo("!=").Or(Span.EqualTo("<>")).Value(SelectToken.NotEqual);
+    private static readonly TextParser<SelectToken> Concat = Span.EqualTo("||").Value(SelectToken.Concat);
 
     private static readonly TextParser<SelectToken> CompoundOperator =
-        And.Or(Or.Or(GreaterOrEqual.Or(Equal.Or(LesserOrEqual.Try().Or(NotEqual)))));
+        And.Or(Concat.Or(GreaterOrEqual.Or(Equal.Or(LesserOrEqual.Try().Or(NotEqual)))));
 
     static SelectTokenizer()
     {

@@ -224,12 +224,20 @@ public class Parser
         PatternSuffix,
         (expr, suffix) => new Expression.Like(expr, suffix.Pattern, suffix.Escape)
     );
+    
+    public static readonly TokenListParser<SelectToken, Expression> StringConcatenation =
+        Superpower.Parse.ChainRight(
+            Token.EqualTo(SelectToken.Concat),
+            Pattern,
+            (_, left, right) => new Expression.Binary(BinaryOperator.Concat, left, right)
+        );
+
 
     public static readonly TokenListParser<SelectToken, Expression> Comparative = ParseOptionalSuffix(
-        Pattern,
+        StringConcatenation,
         (
             from operation in Token.EqualTo(SelectToken.Lesser).Or(Token.EqualTo(SelectToken.Greater)).Or(Token.EqualTo(SelectToken.LesserOrEqual)).Or(Token.EqualTo(SelectToken.GreaterOrEqual))
-            from right in Pattern
+            from right in StringConcatenation
             select (operation, right)
         ),
         (expr, suffix) => new Expression.Binary(GetComparativeOperation(suffix.operation), expr, suffix.right)
@@ -283,7 +291,7 @@ public class Parser
             BooleanAnd,
             (_, left, right) => new Expression.Binary(BinaryOperator.Or, left, right)
         );
-
+    
     public static readonly TokenListParser<SelectToken, Expression> Expression = BooleanOr;
 
     // TODO handle brackets

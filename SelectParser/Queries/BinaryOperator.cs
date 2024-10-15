@@ -17,4 +17,6 @@ public enum BinaryOperator
     Multiply,
     Divide,
     Modulo,
+    
+    Concat,
 }

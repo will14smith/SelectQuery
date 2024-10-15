@@ -288,6 +288,8 @@ public partial class Expression : OneOfBase<Expression.StringLiteral, Expression
                 BinaryOperator.Multiply => "*",
                 BinaryOperator.Divide => "/",
                 BinaryOperator.Modulo => "%",
+                
+                BinaryOperator.Concat=> "||",
                     
                 _ => throw new ArgumentOutOfRangeException(nameof(Operator))
             };

@@ -643,4 +643,22 @@ public class ParserExpressionTests
     }
         
     #endregion
+
+    #region String Concat
+
+    [Fact]
+    public void ParsingStringConcatenation()
+    {
+        var input = "a = b||'x'";
+
+        var result = Parse(Parser.Expression, input);
+
+        var expression = AssertSuccess(result);
+        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        Assert.Equal(BinaryOperator.Equal, binary.Operator);
+        var concat = Assert.IsType<Expression.Binary>((Expression.Binary) binary.Right);
+        Assert.Equal(BinaryOperator.Concat, concat.Operator);
+    }
+
+    #endregion
 }

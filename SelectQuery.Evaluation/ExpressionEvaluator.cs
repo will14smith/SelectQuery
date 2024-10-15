@@ -137,6 +137,8 @@ public class ExpressionEvaluator
             BinaryOperator.Multiply => (decimal) left * (decimal) right,
             BinaryOperator.Divide => (decimal) left / (decimal) right,
             BinaryOperator.Modulo => (decimal) left % (decimal) right,
+            
+            BinaryOperator.Concat => (string) left + (string) right,
 
             _ => throw new ArgumentOutOfRangeException()
         });

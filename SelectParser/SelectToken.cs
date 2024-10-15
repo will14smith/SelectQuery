@@ -56,4 +56,6 @@ public enum SelectToken
     In,
     Like,
     Escape,
+    
+    Concat,
 }
