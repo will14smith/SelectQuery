@@ -79,7 +79,7 @@ public class JsonRecordWriter
             }
 
             // recurse down qualified expressions
-            expression = expression.AsT4.Expression;
+            expression = expression.AsT4.Identifiers[expression.AsT4.Identifiers.Count - 1];
         }
     }
 }

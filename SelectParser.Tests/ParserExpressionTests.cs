@@ -514,8 +514,9 @@ public class ParserExpressionTests
 
         var expression = AssertSuccess(result);
         var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
-        Assert.Equal("a", qualified.Qualification.Name);
-        AssertIdentifier("b", qualified.Expression);
+        Assert.Equal(2, qualified.Identifiers.Count);
+        AssertIdentifier("a", qualified.Identifiers[0]);
+        AssertIdentifier("b", qualified.Identifiers[1]);
     }
     [Fact]
     public void ParsingQuotedQualified()
@@ -526,9 +527,9 @@ public class ParserExpressionTests
 
         var expression = AssertSuccess(result);
         var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
-        Assert.Equal("a", qualified.Qualification.Name);
-        Assert.True(qualified.Qualification.CaseSensitive);
-        AssertIdentifier("b", qualified.Expression);
+        Assert.Equal("a", qualified.Identifiers[0].Name);
+        Assert.True(qualified.Identifiers[0].CaseSensitive);
+        AssertIdentifier("b", qualified.Identifiers[1]);
     }
     [Fact]
     public void ParsingQualifiedStar()
@@ -539,8 +540,8 @@ public class ParserExpressionTests
 
         var expression = AssertSuccess(result);
         var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
-        Assert.Equal("a", qualified.Qualification.Name);
-        AssertIdentifier("*", qualified.Expression);
+        Assert.Equal("a", qualified.Identifiers[0].Name);
+        AssertIdentifier("*", qualified.Identifiers[1]);
     }
     [Fact]
     public void ParsingAggregateFunction()

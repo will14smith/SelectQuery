@@ -128,15 +128,18 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
 
     private Option<JsonElement> EvaluateQualified(Expression.Qualified qualified, Option<JsonElement> context)
     {
-        var target = EvaluateIdentifier(qualified.Qualification, context);
-
-        if (target.IsNone)
+        for (var index = 0; index < qualified.Identifiers.Count; index++)
         {
-            return target;
+            var identifier = qualified.Identifiers[index];
+            context = EvaluateIdentifier(identifier, context);
+            
+            if (context.IsNone)
+            {
+                return context;
+            }
         }
-
-        return Evaluate(qualified.Expression, target);
-
+        
+        return context;
     }
     
     private Option<JsonElement> EvaluateFunction(Function function, Option<JsonElement> context)

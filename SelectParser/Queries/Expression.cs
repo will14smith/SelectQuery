@@ -146,18 +146,16 @@ public partial class Expression : OneOfBase<Expression.StringLiteral, Expression
     }
     public class Qualified
     {
-        public Qualified(Identifier qualification, Expression expression)
+        public Qualified(IReadOnlyList<Identifier> identifiers)
         {
-            Qualification = qualification;
-            Expression = expression;
+            Identifiers = identifiers;
         }
 
-        public Identifier Qualification { get; }
-        public Expression Expression { get; }
+        public IReadOnlyList<Identifier> Identifiers { get; }
 
         protected bool Equals(Qualified other)
         {
-            return Equals(Qualification, other.Qualification) && Equals(Expression, other.Expression);
+            return Identifiers.SequenceEqual(other.Identifiers);
         }
 
         public override bool Equals(object obj)
@@ -165,17 +163,11 @@ public partial class Expression : OneOfBase<Expression.StringLiteral, Expression
             return ReferenceEquals(this, obj) || obj is Qualified other && Equals(other);
         }
 
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return ((Qualification?.GetHashCode() ?? 0) * 397) ^ (Expression?.GetHashCode() ?? 0);
-            }
-        }
+        public override int GetHashCode() => Identifiers.Aggregate(0, (a, x) => a ^ a.GetHashCode());
 
         public override string ToString()
         {
-            return $"{Qualification}.{Expression}";
+            return string.Join(".", Identifiers);
         }
     }
 

@@ -47,12 +47,12 @@ public class QueryValidator
     
     private static bool IsQualifiedStar(Expression expr)
     {
-        while (true)
+        return expr.Value switch
         {
-            if (expr.IsT3) return expr.AsT3.Name == "*";
-            if (!expr.IsT4) return false;
-            expr = expr.AsT4.Expression;
-        }
+            Expression.Identifier identifier => identifier.Name == "*",
+            Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name == "*",
+            _ => false
+        };
     }
 
     internal static bool IsAggregateQuery(Query query) => query.Select.Match(_ => false, list => list.Columns.Any(IsAggregateColumn));

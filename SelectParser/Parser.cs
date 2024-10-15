@@ -82,18 +82,12 @@ public class Parser
             .Select(BuildQualified);
     private static Expression BuildQualified(Expression.Identifier[] identifiers)
     {
-        switch (identifiers.Length)
+        return identifiers.Length switch
         {
-            case 0: throw new InvalidOperationException("Cannot build a qualified expression from no identifiers");
-            case 1: return identifiers[0];
-        }
-
-        Expression result = identifiers[identifiers.Length - 1];
-        for (var i = identifiers.Length - 2; i >= 0; i--)
-        {
-            result = new Expression.Qualified(identifiers[i], result);
-        }
-        return result;
+            0 => throw new InvalidOperationException("Cannot build a qualified expression from no identifiers"),
+            1 => identifiers[0],
+            _ => new Expression.Qualified(identifiers)
+        };
     }
 
     public static readonly TokenListParser<SelectToken, Expression> BracketExpression =
