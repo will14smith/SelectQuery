@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.2.0](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.1.1...SelectQuery-v1.2.0) (2024-10-15)
+
+
+### Features
+
+* Add string concatenation into the parser and evaluator ([bdc98c2](https://github.com/will14smith/SelectQuery/commit/bdc98c28c19f7d7cb53abd6fc3f497982e6bbaef))
+
+
+### Bug Fixes
+
+* tests for concat ([af1152c](https://github.com/will14smith/SelectQuery/commit/af1152c67677b0325f1ed958dc632fddad64b7df))
+
 ## [1.1.1](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.1.0...SelectQuery-v1.1.1) (2024-10-15)
 
 
