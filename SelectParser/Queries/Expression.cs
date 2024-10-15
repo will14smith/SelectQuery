@@ -422,11 +422,20 @@ public partial class Expression : OneOfBase<Expression.StringLiteral, Expression
         {
             Expression = expression;
             Matches = matches;
+
+            if (matches.All(x => x.IsT0))
+            {
+                StringMatches = new HashSet<string>(matches.Select(x => x.AsT0.Value));
+            }
         }
 
         public Expression Expression { get; }
         public IReadOnlyList<Expression> Matches { get; }
-
+        /// <summary>
+        /// if all matches are static strings, this set can be used for faster lookups
+        /// </summary>
+        public IReadOnlyCollection<string>? StringMatches { get; } 
+        
         protected bool Equals(In other)
         {
             return base.Equals(other) && Equals(Expression, other.Expression) && Matches.SequenceEqual(other.Matches);
