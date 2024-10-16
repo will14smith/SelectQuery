@@ -1,6 +1,6 @@
-﻿using System.IO;
+﻿using System.Collections.Concurrent;
+using System.IO;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
@@ -10,6 +10,7 @@ namespace SelectQuery.Evaluation;
 public class JsonLinesEvaluator
 {
     private readonly Query _query;
+    private readonly ConcurrentDictionary<Expression, JsonElement> _literalExpressionCache;
     private readonly JsonRecordWriter _recordWriter;
 
     public JsonLinesEvaluator(Query query)
@@ -19,7 +20,8 @@ public class JsonLinesEvaluator
         validator.ThrowIfErrors();
             
         _query = query;
-        _recordWriter = new JsonRecordWriter(query.From, query.Select);
+        _literalExpressionCache = new ConcurrentDictionary<Expression, JsonElement>();
+        _recordWriter = new JsonRecordWriter(query.From, query.Select, _literalExpressionCache);
     }
 
     public byte[] Run(byte[] file)
@@ -52,7 +54,7 @@ public class JsonLinesEvaluator
         
     private void ProcessAggregate(ref JsonLinesReader reader, Utf8JsonWriter writer, Stream outputBuffer)
     {
-        var state = new AggregateProcessor(_query);
+        var state = new AggregateProcessor(_query, _literalExpressionCache);
             
         var recordsProcessed = 0;
         var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
@@ -67,7 +69,7 @@ public class JsonLinesEvaluator
 
             using var record = readResult.AsT0;
             var rootElement = record.RootElement;
-            if (TestPredicate(rootElement))
+            if (TestPredicate(rootElement, _literalExpressionCache))
             {
                 if (recordsProcessed++ >= limit)
                 {
@@ -92,7 +94,7 @@ public class JsonLinesEvaluator
 
         using var record = readResult.AsT0;
         var rootElement = record.RootElement;
-        if (TestPredicate(rootElement))
+        if (TestPredicate(rootElement, _literalExpressionCache))
         {
             recordsProcessed++;
             _recordWriter.Write(writer, rootElement);
@@ -114,9 +116,9 @@ public class JsonLinesEvaluator
         return JsonDocument.ParseValue(ref reader);
     }
 
-    private bool TestPredicate(JsonElement record)
+    private bool TestPredicate(JsonElement record, ConcurrentDictionary<Expression,JsonElement> literalExpressionCache)
     {
-        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable(where.Condition, _query.From, record).Select(ExpressionEvaluator.ConvertToBoolean), _ => true);
+        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable(where.Condition, _query.From, record, literalExpressionCache).Select(ExpressionEvaluator.ConvertToBoolean), _ => true);
 
         return wherePassed.IsSome && wherePassed.AsT0;
     }

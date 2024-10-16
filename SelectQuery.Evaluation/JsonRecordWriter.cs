@@ -1,30 +1,22 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Text.Json;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
-public class JsonRecordWriter
+public class JsonRecordWriter(FromClause from, SelectClause select, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
 {
-    private readonly FromClause _from;
-    private readonly SelectClause _select;
-
-    public JsonRecordWriter(FromClause from, SelectClause select)
-    {
-        _from = from;
-        _select = select;
-    }
-
     public void Write(Utf8JsonWriter writer, JsonElement obj)
     {
-        if (_select.IsT0)
+        if (select.IsT0)
         {
             WriteStar(writer, obj);
         }
         else
         {
             writer.WriteStartObject();
-            WriteColumns(writer, _select.AsT1.Columns, obj);
+            WriteColumns(writer, select.AsT1.Columns, obj);
             writer.WriteEndObject();
         }
     }
@@ -40,7 +32,7 @@ public class JsonRecordWriter
         {
             var column = columns[index];
 
-            var result = ExpressionEvaluator.EvaluateOnTable(column.Expression, _from, obj);
+            var result = ExpressionEvaluator.EvaluateOnTable(column.Expression, from, obj, literalExpressionCache);
             if (!result.IsSome)
             {
                 continue;

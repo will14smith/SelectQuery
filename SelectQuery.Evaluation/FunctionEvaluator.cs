@@ -8,19 +8,19 @@ namespace SelectQuery.Evaluation;
 
 internal static class FunctionEvaluator
 {
-    public static Option<JsonElement> Evaluate(string? name, IReadOnlyList<Option<JsonElement>> arguments)
+    public static Option<JsonElement> Evaluate(ExpressionEvaluator evaluator, string? name, IReadOnlyList<Option<JsonElement>> arguments)
     {
         var normalisedName = name?.ToLowerInvariant();
 
         return normalisedName switch
         {
-            "lower" => Lower(arguments),
+            "lower" => Lower(evaluator, arguments),
             
             _ => throw new ArgumentOutOfRangeException($"Scalar function '{name}' is not supported", nameof(name))
         };
     }
 
-    private static Option<JsonElement> Lower(IReadOnlyList<Option<JsonElement>> arguments)
+    private static Option<JsonElement> Lower(ExpressionEvaluator evaluator, IReadOnlyList<Option<JsonElement>> arguments)
     {
         if (arguments.Count != 1)
         {
@@ -35,6 +35,6 @@ internal static class FunctionEvaluator
 
         var stringValue = ExpressionEvaluator.ConvertToString(argument.Value);
         
-        return ExpressionEvaluator.CreateElement(stringValue?.ToLowerInvariant());
+        return evaluator.CreateElement(stringValue?.ToLowerInvariant());
     }
 }

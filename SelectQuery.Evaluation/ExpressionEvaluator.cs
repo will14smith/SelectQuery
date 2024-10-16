@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -10,7 +11,7 @@ using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
-public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables)
+public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
 {
     private static readonly JsonElement True; 
     private static readonly JsonElement False; 
@@ -31,7 +32,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         }
     }
     
-    public static Option<JsonElement> EvaluateOnTable(Expression expression, FromClause from, JsonElement obj)
+    public static Option<JsonElement> EvaluateOnTable(Expression expression, FromClause from, JsonElement obj, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
     {
         var tableName = from.Alias.Match(alias => alias, _ => "s3object");
         
@@ -40,16 +41,16 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
             { tableName, obj }
         };
 
-        var evaluator = new ExpressionEvaluator(tables);
+        var evaluator = new ExpressionEvaluator(tables, literalExpressionCache);
         
         return evaluator.Evaluate(expression, new None());
     }
     
     public Option<JsonElement> Evaluate(Expression expression, Option<JsonElement> context)
     {
-        var value = expression.Match<Option<JsonElement>>(
-            strLiteral => CreateElement(strLiteral.Value),
-            numLiteral => CreateElement(numLiteral.Value),
+        var value = expression.Match(
+            strLiteral => literalExpressionCache.GetOrAdd(strLiteral, _ => CreateElement(strLiteral.Value)),
+            numLiteral => literalExpressionCache.GetOrAdd(numLiteral, _ => CreateElement(numLiteral.Value)),
             boolLiteral => CreateElement(boolLiteral.Value),
             identifier => EvaluateIdentifier(identifier, context),
             qualified => EvaluateQualified(qualified, context),
@@ -66,7 +67,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         return value;
     }
     
-    internal static JsonElement CreateElement(string? value)
+    internal JsonElement CreateElement(string? value)
     {
         if (value is null) return Null;
         
@@ -79,7 +80,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var reader = new Utf8JsonReader(stream.ToArray());
         return JsonElement.ParseValue(ref reader);
     }
-    internal static JsonElement CreateElement(decimal value)
+    internal JsonElement CreateElement(decimal value)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -90,8 +91,8 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var reader = new Utf8JsonReader(stream.ToArray());
         return JsonElement.ParseValue(ref reader);
     }
-    internal static JsonElement CreateElement(bool value) => value ? True : False;
-    internal static JsonElement CreateNullElement() => Null;
+    internal JsonElement CreateElement(bool value) => value ? True : False;
+    internal JsonElement CreateNullElement() => Null;
 
     private Option<JsonElement> EvaluateIdentifier(Expression.Identifier identifier, Option<JsonElement> context)
     {
@@ -154,7 +155,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var name = scalar.Identifier.Name;
         var arguments = scalar.Arguments.Select(argument => Evaluate(argument, context)).ToList();
 
-        return FunctionEvaluator.Evaluate(name, arguments);
+        return FunctionEvaluator.Evaluate(this, name, arguments);
     }
 
     private Option<JsonElement> EvaluateUnary(Expression.Unary unary, Option<JsonElement> context)
