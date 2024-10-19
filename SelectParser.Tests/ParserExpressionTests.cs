@@ -16,9 +16,9 @@ public class ParserExpressionTests
         var result = Parse(Parser.BooleanOr, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Or, binary.Operator);
-        var left = Assert.IsType<Expression.Binary>(binary.Left.Value);
+        var left = Assert.IsType<Expression.Binary>(binary.Left);
         Assert.Equal(BinaryOperator.And, left.Operator);
         AssertIdentifier("c", binary.Right);
     }
@@ -45,9 +45,9 @@ public class ParserExpressionTests
         var result = Parse(Parser.BooleanAnd, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.And, binary.Operator);
-        var unary = Assert.IsType<Expression.Unary>(binary.Left.Value);
+        var unary = Assert.IsType<Expression.Unary>(binary.Left);
         Assert.Equal(UnaryOperator.Not, unary.Operator);
         AssertIdentifier("b", binary.Right);
     }
@@ -74,9 +74,9 @@ public class ParserExpressionTests
         var result = Parse(Parser.BooleanUnary, input);
 
         var expression = AssertSuccess(result);
-        var unary = Assert.IsType<Expression.Unary>(expression.Value);
+        var unary = Assert.IsType<Expression.Unary>(expression);
         Assert.Equal(UnaryOperator.Not, unary.Operator);
-        var binary = Assert.IsType<Expression.Binary>(unary.Expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(unary.Expression);
         Assert.Equal(BinaryOperator.Equal, binary.Operator);
     }
     [Fact]
@@ -102,7 +102,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Equality, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Equal, binary.Operator);
         AssertIdentifier("a", binary.Left);
         AssertIdentifier("b", binary.Right);
@@ -130,7 +130,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Comparative, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Lesser, binary.Operator);
         AssertIdentifier("a", binary.Left);
         AssertIdentifier("b", binary.Right);
@@ -158,9 +158,9 @@ public class ParserExpressionTests
         var result = Parse(Parser.Pattern, input);
 
         var expression = AssertSuccess(result);
-        var like = Assert.IsType<Expression.Like>(expression.Value);
+        var like = Assert.IsType<Expression.Like>(expression);
         AssertIdentifier("test", like.Expression);
-        var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern.Value);
+        var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern);
         Assert.Equal("%", pattern.Value);
         AssertNone(like.Escape);
     }
@@ -172,12 +172,12 @@ public class ParserExpressionTests
         var result = Parse(Parser.Pattern, input);
 
         var expression = AssertSuccess(result);
-        var like = Assert.IsType<Expression.Like>(expression.Value);
+        var like = Assert.IsType<Expression.Like>(expression);
         AssertIdentifier("test", like.Expression);
-        var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern.Value);
+        var pattern = Assert.IsType<Expression.StringLiteral>(like.Pattern);
         Assert.Equal("%", pattern.Value);
         var escape = AssertSome(like.Escape);
-        var escapeValue = Assert.IsType<Expression.NumberLiteral>(escape.Value);
+        var escapeValue = Assert.IsType<Expression.NumberLiteral>(escape);
         Assert.Equal(1, escapeValue.Value);
     }
     [Fact]
@@ -203,12 +203,12 @@ public class ParserExpressionTests
         var result = Parse(Parser.Containment, input);
 
         var expression = AssertSuccess(result);
-        var between = Assert.IsType<Expression.Between>(expression.Value);
+        var between = Assert.IsType<Expression.Between>(expression);
         Assert.False(between.Negate);
         AssertIdentifier("test", between.Expression);
-        var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower.Value);
+        var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower);
         Assert.Equal(1, lower.Value);
-        Assert.IsType<Expression.Binary>(between.Upper.Value);
+        Assert.IsType<Expression.Binary>(between.Upper);
     }
     [Fact]
     public void ParsingNotContainment()
@@ -218,12 +218,12 @@ public class ParserExpressionTests
         var result = Parse(Parser.Containment, input);
 
         var expression = AssertSuccess(result);
-        var between = Assert.IsType<Expression.Between>(expression.Value);
+        var between = Assert.IsType<Expression.Between>(expression);
         Assert.True(between.Negate);
         AssertIdentifier("test", between.Expression);
-        var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower.Value);
+        var lower = Assert.IsType<Expression.NumberLiteral>(between.Lower);
         Assert.Equal(1, lower.Value);
-        Assert.IsType<Expression.Binary>(between.Upper.Value);
+        Assert.IsType<Expression.Binary>(between.Upper);
     }
     [Fact]
     public void ParsingNopContainment()
@@ -248,7 +248,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Presence, input);
 
         var expression = AssertSuccess(result);
-        var presence = Assert.IsType<Expression.Presence>(expression.Value);
+        var presence = Assert.IsType<Expression.Presence>(expression);
         AssertIdentifier("test", presence.Expression);
         Assert.False(presence.Negate);
     }
@@ -261,7 +261,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Presence, input);
 
         var expression = AssertSuccess(result);
-        var presence = Assert.IsType<Expression.Presence>(expression.Value);
+        var presence = Assert.IsType<Expression.Presence>(expression);
         Assert.True(presence.Negate);
     }
 
@@ -288,7 +288,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.IsNull, input);
 
         var expression = AssertSuccess(result);
-        var presence = Assert.IsType<Expression.IsNull>(expression.Value);
+        var presence = Assert.IsType<Expression.IsNull>(expression);
         AssertIdentifier("test", presence.Expression);
         Assert.False(presence.Negate);
     }
@@ -301,7 +301,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Presence, input);
 
         var expression = AssertSuccess(result);
-        var presence = Assert.IsType<Expression.IsNull>(expression.Value);
+        var presence = Assert.IsType<Expression.IsNull>(expression);
         Assert.True(presence.Negate);
     }
 
@@ -328,17 +328,17 @@ public class ParserExpressionTests
         var result = Parse(Parser.Membership, input);
 
         var expression = AssertSuccess(result);
-        var @in = Assert.IsType<Expression.In>(expression.Value);
+        var @in = Assert.IsType<Expression.In>(expression);
         AssertIdentifier("test", @in.Expression);
         Assert.Collection(@in.Matches,
             match =>
             {
-                var num = Assert.IsType<Expression.NumberLiteral>(match.Value);
+                var num = Assert.IsType<Expression.NumberLiteral>(match);
                 Assert.Equal(1, num.Value);
             },
             match =>
             {
-                var binary = Assert.IsType<Expression.Binary>(match.Value);
+                var binary = Assert.IsType<Expression.Binary>(match);
                 Assert.Equal(BinaryOperator.Add, binary.Operator);
             }
         );
@@ -351,8 +351,8 @@ public class ParserExpressionTests
         var result = Parse(Parser.Membership, input);
 
         var expression = AssertSuccess(result);
-        var @in = Assert.IsType<Expression.In>(expression.Value);
-        Assert.IsType<Expression.Binary>(@in.Expression.Value);
+        var @in = Assert.IsType<Expression.In>(expression);
+        Assert.IsType<Expression.Binary>(@in.Expression);
     }
     [Fact]
     public void ParsingNopMembership()
@@ -377,10 +377,10 @@ public class ParserExpressionTests
         var result = Parse(Parser.Additive, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Add, binary.Operator);
         AssertIdentifier("test", binary.Left);
-        var number = Assert.IsType<Expression.NumberLiteral>(binary.Right.Value);
+        var number = Assert.IsType<Expression.NumberLiteral>(binary.Right);
         Assert.Equal(123, number.Value);
 
     }
@@ -392,9 +392,9 @@ public class ParserExpressionTests
         var result = Parse(Parser.Additive, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Add, binary.Operator);
-        var left = Assert.IsType<Expression.Binary>(binary.Left.Value);
+        var left = Assert.IsType<Expression.Binary>(binary.Left);
         Assert.Equal(BinaryOperator.Multiply, left.Operator);
     }
     [Fact]
@@ -420,10 +420,10 @@ public class ParserExpressionTests
         var result = Parse(Parser.Multiplicative, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Multiply, binary.Operator);
         AssertIdentifier("test", binary.Left);
-        var number = Assert.IsType<Expression.NumberLiteral>(binary.Right.Value);
+        var number = Assert.IsType<Expression.NumberLiteral>(binary.Right);
         Assert.Equal(123, number.Value);
 
     }
@@ -435,9 +435,9 @@ public class ParserExpressionTests
         var result = Parse(Parser.Multiplicative, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Multiply, binary.Operator);
-        Assert.IsType<Expression.Unary>(binary.Left.Value);
+        Assert.IsType<Expression.Unary>(binary.Left);
     }
     [Fact]
     public void ParsingNopMultiplicative()
@@ -462,7 +462,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Unary, input);
 
         var expression = AssertSuccess(result);
-        var negate = Assert.IsType<Expression.Unary>(expression.Value);
+        var negate = Assert.IsType<Expression.Unary>(expression);
         Assert.Equal(UnaryOperator.Negate, negate.Operator);
         AssertIdentifier("test", negate.Expression);
     }
@@ -489,7 +489,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var identifier = Assert.IsType<Expression.Identifier>(expression.Value);
+        var identifier = Assert.IsType<Expression.Identifier>(expression);
         Assert.Equal("Test", identifier.Name);
         Assert.False(identifier.CaseSensitive);
     }
@@ -501,7 +501,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var identifier = Assert.IsType<Expression.Identifier>(expression.Value);
+        var identifier = Assert.IsType<Expression.Identifier>(expression);
         Assert.Equal("Test", identifier.Name);
         Assert.True(identifier.CaseSensitive);
     }
@@ -513,7 +513,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
+        var qualified = Assert.IsType<Expression.Qualified>(expression);
         Assert.Equal(2, qualified.Identifiers.Count);
         AssertIdentifier("a", qualified.Identifiers[0]);
         AssertIdentifier("b", qualified.Identifiers[1]);
@@ -526,7 +526,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
+        var qualified = Assert.IsType<Expression.Qualified>(expression);
         Assert.Equal("a", qualified.Identifiers[0].Name);
         Assert.True(qualified.Identifiers[0].CaseSensitive);
         AssertIdentifier("b", qualified.Identifiers[1]);
@@ -539,7 +539,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var qualified = Assert.IsType<Expression.Qualified>(expression.Value);
+        var qualified = Assert.IsType<Expression.Qualified>(expression);
         Assert.Equal("a", qualified.Identifiers[0].Name);
         AssertIdentifier("*", qualified.Identifiers[1]);
     }
@@ -551,9 +551,8 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
-        var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
-        var average = Assert.IsType<AggregateFunction.Average>(aggregate.Value);
+        var function = Assert.IsType<Expression.FunctionExpression>(expression);
+        var average = Assert.IsType<AggregateFunction.Average>(function.Function);
         AssertIdentifier("Value", average.Expression);
     }
     [Fact]
@@ -564,8 +563,8 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
-        var scalar = Assert.IsType<ScalarFunction>(function.Function.Value);
+        var function = Assert.IsType<Expression.FunctionExpression>(expression);
+        var scalar = Assert.IsType<ScalarFunction>(function.Function);
         AssertIdentifier("LOWER", scalar.Identifier);
         Assert.Equal(1, scalar.Arguments.Count);
         AssertIdentifier("Value", scalar.Arguments[0]);
@@ -578,9 +577,8 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
-        var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
-        var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
+        var function = Assert.IsType<Expression.FunctionExpression>(expression);
+        var count = Assert.IsType<AggregateFunction.Count>(function.Function);
         Assert.True(count.Expression.IsSome);
         AssertIdentifier("Value", count.Expression.AsT0);
     }
@@ -592,9 +590,8 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var function = Assert.IsType<Expression.FunctionExpression>(expression.Value);
-        var aggregate = Assert.IsType<AggregateFunction>(function.Function.Value);
-        var count = Assert.IsType<AggregateFunction.Count>(aggregate.Value);
+        var function = Assert.IsType<Expression.FunctionExpression>(expression);
+        var count = Assert.IsType<AggregateFunction.Count>(function.Function);
         Assert.True(count.Expression.IsNone);
     }
     [Fact]
@@ -605,7 +602,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var identifier = Assert.IsType<Expression.NumberLiteral>(expression.Value);
+        var identifier = Assert.IsType<Expression.NumberLiteral>(expression);
         Assert.Equal(123, identifier.Value);
     }
     [Fact]
@@ -616,7 +613,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var identifier = Assert.IsType<Expression.StringLiteral>(expression.Value);
+        var identifier = Assert.IsType<Expression.StringLiteral>(expression);
         Assert.Equal("test", identifier.Value);
     }
     [Fact]
@@ -627,7 +624,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var identifier = Assert.IsType<Expression.BooleanLiteral>(expression.Value);
+        var identifier = Assert.IsType<Expression.BooleanLiteral>(expression);
         Assert.True(identifier.Value);
     }
 
@@ -639,7 +636,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Term, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Or, binary.Operator);
     }
         
@@ -655,7 +652,7 @@ public class ParserExpressionTests
         var result = Parse(Parser.Expression, input);
 
         var expression = AssertSuccess(result);
-        var binary = Assert.IsType<Expression.Binary>(expression.Value);
+        var binary = Assert.IsType<Expression.Binary>(expression);
         Assert.Equal(BinaryOperator.Equal, binary.Operator);
         var concat = Assert.IsType<Expression.Binary>((Expression.Binary) binary.Right);
         Assert.Equal(BinaryOperator.Concat, concat.Operator);

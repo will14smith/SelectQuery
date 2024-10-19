@@ -15,7 +15,7 @@ public class ParserSelectTests
         var result = Parse(Parser.SelectClause, input);
 
         var select = AssertSuccess(result);
-        Assert.True(select.IsT0);
+        Assert.IsType<SelectClause.Star>(select);
     }
     [Fact]
     public void ParsingSelectColumn()
@@ -81,9 +81,9 @@ public class ParserSelectTests
         AssertFailed(result);
     }
 
-    private IReadOnlyCollection<Column> AssertColumns(SelectClause clause)
+    private static IReadOnlyCollection<Column> AssertColumns(SelectClause clause)
     {
-        Assert.True(clause.IsT1);
-        return clause.AsT1.Columns;
+        var list = Assert.IsType<SelectClause.List>(clause);
+        return list.Columns;
     }
 }

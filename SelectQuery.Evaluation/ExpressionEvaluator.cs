@@ -1,17 +1,14 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
-using System.Text.Json.Nodes;
-using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
-public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
+public class ExpressionEvaluator(JsonElement tableValue, string tableName, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
 {
     private static readonly JsonElement True; 
     private static readonly JsonElement False; 
@@ -35,39 +32,33 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
     public static Option<JsonElement> EvaluateOnTable(Expression expression, FromClause from, JsonElement obj, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
     {
         var tableName = from.Alias.Match(alias => alias, _ => "s3object");
-        
-        var tables = new Dictionary<string, JsonElement>(StringComparer.OrdinalIgnoreCase)
-        {
-            { tableName, obj }
-        };
 
-        var evaluator = new ExpressionEvaluator(tables, literalExpressionCache);
+        var evaluator = new ExpressionEvaluator(obj, tableName, literalExpressionCache);
         
         return evaluator.Evaluate(expression, new None());
     }
     
     public Option<JsonElement> Evaluate(Expression expression, Option<JsonElement> context)
     {
-        var value = expression.Match(
-            strLiteral => literalExpressionCache.GetOrAdd(strLiteral, _ => CreateElement(strLiteral.Value)),
-            numLiteral => literalExpressionCache.GetOrAdd(numLiteral, _ => CreateElement(numLiteral.Value)),
-            boolLiteral => CreateElement(boolLiteral.Value),
-            identifier => EvaluateIdentifier(identifier, context),
-            qualified => EvaluateQualified(qualified, context),
-            function => EvaluateFunction(function.Function, context),
-            unary => EvaluateUnary(unary, context),
-            binary => EvaluateBinary(binary, context),
-            between => CreateElement(EvaluateBetween(between, context)),
-            isNull => CreateElement(EvaluateIsNull(isNull, context)),
-            presence => CreateElement(EvaluatePresence(presence, context)),
-            inExpr => CreateElement(EvaluateIn(inExpr, context)),
-            like => CreateElement(EvaluateLike(like, context))
-        );
-
-        return value;
+        return expression switch
+        {
+            Expression.StringLiteral stringLiteral => literalExpressionCache.GetOrAdd(stringLiteral, static literal => CreateElement(((Expression.StringLiteral)literal).Value)),
+            Expression.NumberLiteral numberLiteral => literalExpressionCache.GetOrAdd(numberLiteral, static literal => CreateElement(((Expression.NumberLiteral)literal).Value)),
+            Expression.BooleanLiteral booleanLiteral => CreateElement(booleanLiteral.Value),
+            Expression.Identifier identifier => EvaluateIdentifier(identifier, context),
+            Expression.Qualified qualified => EvaluateQualified(qualified, context),
+            Expression.FunctionExpression functionExpression => EvaluateFunction(functionExpression.Function, context),
+            Expression.Unary unary => EvaluateUnary(unary, context),
+            Expression.Binary binary => EvaluateBinary(binary, context),
+            Expression.Between between => CreateElement(EvaluateBetween(between, context)),
+            Expression.IsNull isNull => CreateElement(EvaluateIsNull(isNull, context)),
+            Expression.Presence presence => CreateElement(EvaluatePresence(presence, context)),
+            Expression.In contains => CreateElement(EvaluateIn(contains, context)),
+            Expression.Like like => CreateElement(EvaluateLike(like, context))
+        };
     }
     
-    internal JsonElement CreateElement(string? value)
+    internal static JsonElement CreateElement(string? value)
     {
         if (value is null) return Null;
         
@@ -80,7 +71,7 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var reader = new Utf8JsonReader(stream.ToArray());
         return JsonElement.ParseValue(ref reader);
     }
-    internal JsonElement CreateElement(decimal value)
+    internal static JsonElement CreateElement(decimal value)
     {
         using var stream = new MemoryStream();
         using (var writer = new Utf8JsonWriter(stream))
@@ -91,8 +82,8 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
         var reader = new Utf8JsonReader(stream.ToArray());
         return JsonElement.ParseValue(ref reader);
     }
-    internal JsonElement CreateElement(bool value) => value ? True : False;
-    internal JsonElement CreateNullElement() => Null;
+    internal static JsonElement CreateElement(bool value) => value ? True : False;
+    internal static JsonElement CreateNullElement() => Null;
 
     private Option<JsonElement> EvaluateIdentifier(Expression.Identifier identifier, Option<JsonElement> context)
     {
@@ -103,7 +94,12 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
                 throw new NotImplementedException();
             }
 
-            return tables.TryGetValue(identifier.Name, out var table) ? table : default;
+            if (identifier.Name == tableName)
+            {
+                return tableValue;
+            }
+
+            return default;
         }
 
         if (context.AsT0 is { ValueKind: JsonValueKind.Object })
@@ -120,8 +116,15 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
             }
             
             // slow: try match case-insensitive key
-            var entry = context.AsT0.EnumerateObject().FirstOrDefault(x => string.Equals(x.Name, identifier.Name, StringComparison.OrdinalIgnoreCase));
-            return entry.Value.ValueKind != JsonValueKind.Undefined ? entry.Value : new None();
+            foreach (var property in context.AsT0.EnumerateObject())
+            {
+                if (string.Equals(property.Name, identifier.Name, StringComparison.OrdinalIgnoreCase))
+                {
+                    return property.Value;
+                }
+            }
+
+            return default; 
         }
         
         throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {context.AsT0.ValueKind}");
@@ -145,13 +148,11 @@ public class ExpressionEvaluator(IReadOnlyDictionary<string, JsonElement> tables
     
     private Option<JsonElement> EvaluateFunction(Function function, Option<JsonElement> context)
     {
-        if (!function.IsT1)
+        if (function is not ScalarFunction scalar)
         {
             throw new InvalidOperationException("cannot evaluate a non-scalar function in this way");
         }
         
-        var scalar = function.AsT1;
-
         var name = scalar.Identifier.Name;
         var arguments = scalar.Arguments.Select(argument => Evaluate(argument, context)).ToList();
 

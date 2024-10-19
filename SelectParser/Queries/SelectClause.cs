@@ -1,33 +1,37 @@
-﻿using System.Collections.Generic;
-using OneOf;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace SelectParser.Queries;
 
-[GenerateOneOf]
-public partial class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
+public abstract class SelectClause
 {
-    public override string ToString() => Value.ToString();
-
-    public class Star
+    public class Star : SelectClause, IEquatable<Star>
     {
-        public override string ToString()
-        {
-            return "SELECT *";
-        }
+        public override string ToString() => "SELECT *";
+
+        public bool Equals(Star? other) => other is not null;
+
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || Equals(obj as Star);
+        public override int GetHashCode() => 11;
+
+        public static bool operator ==(Star? left, Star? right) => Equals(left, right);
+        public static bool operator !=(Star? left, Star? right) => !Equals(left, right);
     }
 
-    public class List
+    public class List(IReadOnlyList<Column> columns) : SelectClause, IEquatable<List>
     {
-        public List(IReadOnlyList<Column> columns)
-        {
-            Columns = columns;
-        }
+        public IReadOnlyList<Column> Columns { get; } = columns;
 
-        public IReadOnlyList<Column> Columns { get; }
+        public override string ToString() => $"SELECT {string.Join(", ", Columns)}";
+        
+        public bool Equals(List? other) => other is not null && Columns.SequenceEqual(other.Columns);
 
-        public override string ToString()
-        {
-            return $"SELECT {string.Join(", ", Columns)}";
-        }
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || Equals(obj as List);
+        public override int GetHashCode() => 11;
+
+        public static bool operator ==(List? left, List? right) => Equals(left, right);
+        public static bool operator !=(List? left, List? right) => !Equals(left, right);
+
     }
 }

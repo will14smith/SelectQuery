@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.Json;
-using OneOf.Types;
 using SelectParser;
 
 namespace SelectQuery.Evaluation;
@@ -35,6 +34,6 @@ internal static class FunctionEvaluator
 
         var stringValue = ExpressionEvaluator.ConvertToString(argument.Value);
         
-        return evaluator.CreateElement(stringValue?.ToLowerInvariant());
+        return ExpressionEvaluator.CreateElement(stringValue?.ToLowerInvariant());
     }
 }

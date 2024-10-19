@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
 using SelectParser.Queries;
@@ -9,15 +10,20 @@ public class JsonRecordWriter(FromClause from, SelectClause select, ConcurrentDi
 {
     public void Write(Utf8JsonWriter writer, JsonElement obj)
     {
-        if (select.IsT0)
+        switch (select)
         {
-            WriteStar(writer, obj);
-        }
-        else
-        {
-            writer.WriteStartObject();
-            WriteColumns(writer, select.AsT1.Columns, obj);
-            writer.WriteEndObject();
+            case SelectClause.Star:
+                WriteStar(writer, obj);
+                break;
+
+            case SelectClause.List list:
+                writer.WriteStartObject();
+                WriteColumns(writer, list.Columns, obj);
+                writer.WriteEndObject();
+                break;
+            
+            default:
+                throw new ArgumentOutOfRangeException(nameof(select));
         }
     }
 
@@ -56,22 +62,11 @@ public class JsonRecordWriter(FromClause from, SelectClause select, ConcurrentDi
 
     private static string GetColumnName(int index, Expression expression)
     {
-        while (true)
+        return expression switch
         {
-            if (expression.IsT3)
-            {
-                // use the identifier name
-                return expression.AsT3.Name;
-            }
-
-            if (!expression.IsT4)
-            {
-                // default is _N for the Nth column (1 indexed)
-                return $"_{index + 1}";
-            }
-
-            // recurse down qualified expressions
-            expression = expression.AsT4.Identifiers[expression.AsT4.Identifiers.Count - 1];
-        }
+            Expression.Identifier identifier => identifier.Name,
+            Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name,
+            _ => $"_{index + 1}"
+        };
     }
 }

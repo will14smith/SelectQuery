@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using JetBrains.Annotations;
-using OneOf.Types;
 using SelectParser.Queries;
 using Superpower;
 using Superpower.Model;
@@ -44,7 +43,7 @@ public class Parser
 
     private static AggregateFunction BuildCountFunction(Expression expression)
     {
-        if (expression.Value is Expression.Identifier { Name: "*" })
+        if (expression is Expression.Identifier { Name: "*" })
         {
             return new AggregateFunction.Count(new None());
         }

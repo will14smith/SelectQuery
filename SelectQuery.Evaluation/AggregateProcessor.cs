@@ -2,7 +2,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using SelectParser;
 using SelectParser.Queries;
 
@@ -42,8 +41,8 @@ internal class AggregateProcessor(Query query, ConcurrentDictionary<Expression, 
         public static IReadOnlyList<ColumnState> CreateForQuery(Query query, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
         {
             var states = new List<ColumnState>();
-
-            var columns = query.Select.AsT1.Columns;
+            
+            var columns = ((SelectClause.List)query.Select).Columns;
             foreach (var column in columns)
             {
                 states.Add(CreateForColumn(query, column, literalExpressionCache));
@@ -54,23 +53,26 @@ internal class AggregateProcessor(Query query, ConcurrentDictionary<Expression, 
 
         private static ColumnState CreateForColumn(Query query, Column column, ConcurrentDictionary<Expression, JsonElement> literalExpressionCache)
         {
-            if (!(column.Expression.Value is Expression.FunctionExpression functionExpression))
+            if (!(column.Expression is Expression.FunctionExpression functionExpression))
             {
                 throw new NotImplementedException();
             }
 
-            if (!(functionExpression.Function.Value is AggregateFunction aggregateFunction))
+            if (!(functionExpression.Function is AggregateFunction aggregateFunction))
             {
                 throw new NotImplementedException();
             }
 
-            return aggregateFunction.Match<ColumnState>(
-                x => new AverageColumnState(column, query, x, literalExpressionCache),                
-                x => new CountColumnState(column, query, x, literalExpressionCache),                
-                x => new MaxColumnState(column, query, x, literalExpressionCache),                
-                x => new MinColumnState(column, query, x, literalExpressionCache),                
-                x => new SumColumnState(column, query, x, literalExpressionCache)                
-            );
+            return aggregateFunction switch
+            {
+                AggregateFunction.Average average => new AverageColumnState(column, query, average, literalExpressionCache),
+                AggregateFunction.Count count => new CountColumnState(column, query, count, literalExpressionCache),
+                AggregateFunction.Max max => new MaxColumnState(column, query, max, literalExpressionCache),
+                AggregateFunction.Min min => new MinColumnState(column, query, min, literalExpressionCache),
+                AggregateFunction.Sum sum => new SumColumnState(column, query, sum, literalExpressionCache),
+                
+                _ => throw new ArgumentOutOfRangeException(nameof(aggregateFunction))
+            };
         }
         
         public abstract void ProcessRecord(JsonElement record);

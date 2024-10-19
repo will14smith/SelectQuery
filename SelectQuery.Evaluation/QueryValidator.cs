@@ -24,7 +24,7 @@ public class QueryValidator
             AddError("ordering is not currently supported");
         }
 
-        if (query.Select.IsT1 && query.Select.AsT1.Columns.Any(x => IsQualifiedStar(x.Expression)))
+        if (query.Select is SelectClause.List list && list.Columns.Any(x => IsQualifiedStar(x.Expression)))
         {
             AddError("qualified star projections not currently supported");
         }
@@ -47,7 +47,7 @@ public class QueryValidator
     
     private static bool IsQualifiedStar(Expression expr)
     {
-        return expr.Value switch
+        return expr switch
         {
             Expression.Identifier identifier => identifier.Name == "*",
             Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name == "*",
@@ -55,14 +55,25 @@ public class QueryValidator
         };
     }
 
-    internal static bool IsAggregateQuery(Query query) => query.Select.Match(_ => false, list => list.Columns.Any(IsAggregateColumn));
+    internal static bool IsAggregateQuery(Query query) => query.Select switch
+    {
+        SelectClause.Star star => false,
+        SelectClause.List list => list.Columns.Any(IsAggregateColumn),
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+    private static bool HasNonAggregateColumns(Query query) => query.Select switch
+    {
+        SelectClause.Star star => true,
+        SelectClause.List list => list.Columns.Any(column => !IsAggregateColumn(column)),
+        _ => throw new ArgumentOutOfRangeException()
+    };
     
-    private static bool HasNonAggregateColumns(Query query) => query.Select.Match(_ => true, list => list.Columns.Any(column => !IsAggregateColumn(column)));
     private static bool IsAggregateColumn(Column column)
     {
-        if (column.Expression.Value is Expression.FunctionExpression functionExpression)
+        if (column.Expression is Expression.FunctionExpression functionExpression)
         {
-            return functionExpression.Function.Value is AggregateFunction;
+            return functionExpression.Function is AggregateFunction;
         }
 
         return false;

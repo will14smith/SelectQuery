@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using OneOf.Types;
 
 namespace SelectParser;
 
@@ -45,3 +44,5 @@ public readonly struct Option<T> : IEquatable<Option<T>>
 
     public TResult Match<TResult>(Func<T, TResult> someFn, Func<T?, TResult> noneFn) => HasValue ? someFn(Value!) : noneFn(Value);
 }
+
+public struct None { }
