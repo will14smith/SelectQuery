@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using OneOf.Types;
 using SelectParser.Queries;
 
@@ -420,7 +421,7 @@ public class Parser
         {
             case SelectToken.NumberLiteral: return Result<Expression>.Ok(new Expression.NumberLiteral(ParseNumber(next)));
             case SelectToken.StringLiteral: return Result<Expression>.Ok(new Expression.StringLiteral(ParseString(next)));
-            case SelectToken.BooleanLiteral: return Result<Expression>.Ok(new Expression.BooleanLiteral(bool.Parse(next.ToStringValue())));
+            case SelectToken.BooleanLiteral: return Result<Expression>.Ok(new Expression.BooleanLiteral(ParseBoolean(next)));
             case SelectToken.Identifier:
             {
                 var identifier = ParseIdentifier(next);
@@ -745,22 +746,46 @@ public class Parser
         return Result<Query>.Ok(query);
     }
 
-    private static decimal ParseNumber(SelectTokenizer.Token next) => decimal.Parse(next.ToStringValue());
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static decimal ParseNumber(SelectTokenizer.Token next)
+    {
+#if NETSTANDARD
+        return decimal.Parse(next.ToStringValue());
+#else
+        return decimal.Parse(next.Span);
+#endif
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static string ParseString(SelectTokenizer.Token token)
     {
         // TODO handle escapes
+#if NETSTANDARD
         return new string(token.Span.Slice(1, token.Span.Length - 2).ToArray());
+#else
+        return new string(token.Span[1..^1]);
+#endif
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ParseBoolean(SelectTokenizer.Token next)
+    {
+#if NETSTANDARD
+        return bool.Parse(next.ToStringValue());
+#else
+        return bool.Parse(next.Span);
+#endif
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static Expression.Identifier ParseIdentifier(SelectTokenizer.Token token)
     {
-        if (token.Span[0] == '"')
-        {
-            return new Expression.Identifier(new string(token.Span.Slice(1, token.Span.Length - 2).ToArray()), true);
-        }
-        else
-        {
-            return new Expression.Identifier(new string(token.Span.ToArray()), false);
-        }
+#if NETSTANDARD
+        return token.Span[0] == '"' 
+            ? new Expression.Identifier(new string(token.Span.Slice(1, token.Span.Length - 2).ToArray()), true)
+            : new Expression.Identifier(new string(token.Span.ToArray()), false);
+#else
+        return token.Span[0] == '"' 
+            ? new Expression.Identifier(new string(token.Span[1..^1]), true)
+            : new Expression.Identifier(new string(token.Span), false);
+#endif
     }
     
     public readonly struct Result<T>

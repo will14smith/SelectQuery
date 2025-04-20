@@ -10,6 +10,34 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
     private readonly ReadOnlySpan<char> _input = input;
     private int _offset = offset;
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ReadOnlySpan<char> Slice(int start, int end)
+    {
+#if NETSTANDARD
+        return _input.Slice(start, end - start);
+#else
+        return _input[start..end];
+#endif
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ReadOnlySpan<char> SlicePrevious(int count)
+    {
+#if NETSTANDARD
+        return _input.Slice(_offset - count, count);
+#else
+        return _input[(_offset - count).._offset];
+#endif
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private ReadOnlySpan<char> SliceCurrentWithIncrement()
+    {
+#if NETSTANDARD
+        return _input.Slice(_offset++, 1);
+#else
+        return _input[_offset..++_offset];
+#endif
+    }
+    
     public static Token Read(ref SelectTokenizer lexer)
     {
         var result = SkipWhiteSpace(ref lexer);
@@ -44,7 +72,7 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             
             var end = lexer._offset;
 
-            var text = lexer._input.Slice(start, end - start);
+            var text = lexer.Slice(start, end);
 
             if (IsIdentifier(text, "SELECT")) { return new Token(SelectToken.Select, text); }
             if (IsIdentifier(text, "AS")) { return new Token(SelectToken.As, text); }
@@ -104,10 +132,8 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             
             // make sure we actually consume the end quote
             var end = ++lexer._offset;
-
-            var text = lexer._input.Slice(start, end - start);
-
-            return new Token(SelectToken.Identifier, text);
+            
+            return new Token(SelectToken.Identifier, lexer.Slice(start, end));
         }
 
         if (next == '\'')
@@ -142,7 +168,7 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             // make sure we actually consume the end quote
             var end = ++lexer._offset;
 
-            var text = lexer._input.Slice(start, end - start);
+            var text = lexer.Slice(start, end);
 
             return new Token(SelectToken.StringLiteral, text);
         }
@@ -201,7 +227,7 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             
             var end = lexer._offset;
 
-            var text = lexer._input.Slice(start, end - start);
+            var text = lexer.Slice(start, end);
 
             return new Token(SelectToken.NumberLiteral, text);
 
@@ -225,7 +251,7 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
 
             lexer._offset++;
 
-            return new Token(SelectToken.And, lexer._input.Slice(lexer._offset - 2, 2));
+            return new Token(SelectToken.And, lexer.SlicePrevious(2));
         }
         if (next == '|')
         {
@@ -245,15 +271,15 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
 
             lexer._offset++;
 
-            return new Token(SelectToken.Concat, lexer._input.Slice(lexer._offset - 2, 2));
-        }     
+            return new Token(SelectToken.Concat, lexer.SlicePrevious(2));
+        }
         if (next == '<')
         {
             lexer._offset++;
             
             if (lexer._offset >= lexer._input.Length)
             {
-                return new Token(SelectToken.Lesser, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Lesser, lexer.SlicePrevious(1));
             }
             
             next = lexer._input[lexer._offset];
@@ -262,17 +288,17 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             {
                 lexer._offset++;
 
-                return new Token(SelectToken.LesserOrEqual, lexer._input.Slice(lexer._offset - 2, 2));
+                return new Token(SelectToken.LesserOrEqual, lexer.SlicePrevious(2));
             }
             
             if (next == '>')
             {
                 lexer._offset++;
 
-                return new Token(SelectToken.NotEqual, lexer._input.Slice(lexer._offset - 2, 2));
+                return new Token(SelectToken.NotEqual, lexer.SlicePrevious(2));
             }
 
-            return new Token(SelectToken.Lesser, lexer._input.Slice(lexer._offset - 1, 1));
+            return new Token(SelectToken.Lesser, lexer.SlicePrevious(1));
         }    
         if (next == '>')
         {
@@ -280,19 +306,19 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             
             if (lexer._offset >= lexer._input.Length)
             {
-                return new Token(SelectToken.Greater, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Greater, lexer.SlicePrevious(1));
             }
             
             next = lexer._input[lexer._offset];
 
             if (next != '=')
             {
-                return new Token(SelectToken.Greater, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Greater, lexer.SlicePrevious(1));
             }
 
             lexer._offset++;
 
-            return new Token(SelectToken.GreaterOrEqual, lexer._input.Slice(lexer._offset - 2, 2));
+            return new Token(SelectToken.GreaterOrEqual, lexer.SlicePrevious(2));
         }   
         if (next == '=')
         {
@@ -300,19 +326,19 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             
             if (lexer._offset >= lexer._input.Length)
             {
-                return new Token(SelectToken.Equal, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Equal, lexer.SlicePrevious(1));
             }
             
             next = lexer._input[lexer._offset];
 
             if (next != '=')
             {
-                return new Token(SelectToken.Equal, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Equal, lexer.SlicePrevious(1));
             }
 
             lexer._offset++;
 
-            return new Token(SelectToken.Equal, lexer._input.Slice(lexer._offset - 2, 2));
+            return new Token(SelectToken.Equal, lexer.SlicePrevious(2));
         }
         if (next == '!')
         {
@@ -320,30 +346,30 @@ public ref struct SelectTokenizer(ReadOnlySpan<char> input, int offset = 0)
             
             if (lexer._offset >= lexer._input.Length)
             {
-                return new Token(SelectToken.Not, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Not, lexer.SlicePrevious(1));
             }
             
             next = lexer._input[lexer._offset];
 
             if (next != '=')
             {
-                return new Token(SelectToken.Not, lexer._input.Slice(lexer._offset - 1, 1));
+                return new Token(SelectToken.Not, lexer.SlicePrevious(1));
             }
 
             lexer._offset++;
 
-            return new Token(SelectToken.NotEqual, lexer._input.Slice(lexer._offset - 2, 2));
+            return new Token(SelectToken.NotEqual, lexer.SlicePrevious(2));
         }
         
-        if (next == '.') { return new Token(SelectToken.Dot, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == ',') { return new Token(SelectToken.Comma, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == '(') { return new Token(SelectToken.LeftBracket, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == ')') { return new Token(SelectToken.RightBracket, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == '*') { return new Token(SelectToken.Star, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == '-') { return new Token(SelectToken.Negate, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == '+') { return new Token(SelectToken.Add, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == '/') { return new Token(SelectToken.Divide, lexer._input.Slice(lexer._offset++, 1)); }
-        if (next == '%') { return new Token(SelectToken.Modulo, lexer._input.Slice(lexer._offset++, 1)); }
+        if (next == '.') { return new Token(SelectToken.Dot, lexer.SliceCurrentWithIncrement()); }
+        if (next == ',') { return new Token(SelectToken.Comma, lexer.SliceCurrentWithIncrement()); }
+        if (next == '(') { return new Token(SelectToken.LeftBracket, lexer.SliceCurrentWithIncrement()); }
+        if (next == ')') { return new Token(SelectToken.RightBracket, lexer.SliceCurrentWithIncrement()); }
+        if (next == '*') { return new Token(SelectToken.Star, lexer.SliceCurrentWithIncrement()); }
+        if (next == '-') { return new Token(SelectToken.Negate, lexer.SliceCurrentWithIncrement()); }
+        if (next == '+') { return new Token(SelectToken.Add, lexer.SliceCurrentWithIncrement()); }
+        if (next == '/') { return new Token(SelectToken.Divide, lexer.SliceCurrentWithIncrement()); }
+        if (next == '%') { return new Token(SelectToken.Modulo, lexer.SliceCurrentWithIncrement()); }
         
         return new Token(SelectToken.Error, "Unrecognised char".AsSpan());
     }
