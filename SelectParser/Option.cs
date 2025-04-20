@@ -29,13 +29,7 @@ public readonly struct Option<T> : IEquatable<Option<T>>
     
     public bool Equals(Option<T> other) => HasValue == other.HasValue && EqualityComparer<T?>.Default.Equals(Value, other.Value);
     public override bool Equals(object? obj) => obj is Option<T> other && Equals(other);
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            return (HasValue.GetHashCode() * 397) ^ EqualityComparer<T?>.Default.GetHashCode(Value);
-        }
-    }
+    public override int GetHashCode() => unchecked((HasValue.GetHashCode() * 397) ^ (Value is not null ? EqualityComparer<T?>.Default.GetHashCode(Value) : 0));
 
     public static bool operator ==(Option<T> left, Option<T> right) => left.Equals(right);
     public static bool operator !=(Option<T> left, Option<T> right) => !left.Equals(right);

@@ -6,28 +6,17 @@ namespace SelectParser.Queries;
 [GenerateOneOf]
 public partial class SelectClause : OneOfBase<SelectClause.Star, SelectClause.List>
 {
-    public override string ToString() => Value.ToString();
+    public override string? ToString() => Value.ToString();
 
     public class Star
     {
-        public override string ToString()
-        {
-            return "SELECT *";
-        }
+        public override string ToString() => "SELECT *";
     }
 
-    public class List
+    public class List(IReadOnlyList<Column> columns)
     {
-        public List(IReadOnlyList<Column> columns)
-        {
-            Columns = columns;
-        }
+        public IReadOnlyList<Column> Columns { get; } = columns;
 
-        public IReadOnlyList<Column> Columns { get; }
-
-        public override string ToString()
-        {
-            return $"SELECT {string.Join(", ", Columns)}";
-        }
+        public override string ToString() => $"SELECT {string.Join(", ", Columns)}";
     }
 }

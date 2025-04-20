@@ -7,155 +7,79 @@ namespace SelectParser.Queries;
 [GenerateOneOf]
 public partial class Function : OneOfBase<AggregateFunction, ScalarFunction>
 {
-    public override string ToString() => Value.ToString();
+    public override string? ToString() => Value.ToString();
 }
 
 [GenerateOneOf]
 public partial class AggregateFunction : OneOfBase<AggregateFunction.Average, AggregateFunction.Count,
     AggregateFunction.Max, AggregateFunction.Min, AggregateFunction.Sum>
 {
-    public override string ToString() => Value.ToString();
+    public override string? ToString() => Value.ToString();
 
-    public class Average
+    public class Average(Expression expression)
     {
-        public Average(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Average other) => base.Equals(other) && Expression.Equals(other.Expression);
-
-        public override bool Equals(object obj) =>
-            ReferenceEquals(this, obj) || obj is Average other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        protected bool Equals(Average other) => Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Average other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"AVG({Expression})";
     }
 
-    public class Count
+    public class Count(Option<Expression> expression)
     {
-        public Count(Option<Expression> expression)
-        {
-            Expression = expression;
-        }
+        public Option<Expression> Expression { get; } = expression;
 
-        public Option<Expression> Expression { get; }
+        protected bool Equals(Count other) => Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Count other && Equals(other);
 
-        protected bool Equals(Count other) => base.Equals(other) && Expression.Equals(other.Expression);
-
-        public override bool Equals(object obj) =>
-            ReferenceEquals(this, obj) || obj is Count other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"COUNT({(Expression.IsSome ? Expression : "*")})";
     }
 
-    public class Max
+    public class Max(Expression expression)
     {
-        public Max(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Max other) => base.Equals(other) && Expression.Equals(other.Expression);
-        public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is Max other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        protected bool Equals(Max other) => Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Max other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"MAX({Expression})";
     }
 
-    public class Min
+    public class Min(Expression expression)
     {
-        public Min(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Min other) => base.Equals(other) && Expression.Equals(other.Expression);
-        public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is Min other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        protected bool Equals(Min other) => Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Min other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"MIN({Expression})";
     }
 
-    public class Sum
+    public class Sum(Expression expression)
     {
-        public Sum(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Sum other) => base.Equals(other) && Expression.Equals(other.Expression);
-        public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is Sum other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        protected bool Equals(Sum other) => Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Sum other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"SUM({Expression})";
     }
 }
 
-public class ScalarFunction
+public class ScalarFunction(Expression.Identifier identifier, IReadOnlyList<Expression> arguments)
 {
-    public ScalarFunction(Expression.Identifier identifier, IReadOnlyList<Expression> arguments)
-    {
-        Identifier = identifier;
-        Arguments = arguments;
-    }
+    public Expression.Identifier Identifier { get; } = identifier;
+    public IReadOnlyList<Expression> Arguments { get; } = arguments;
 
-    public Expression.Identifier Identifier { get; }
-    public IReadOnlyList<Expression> Arguments { get; }
-
-    protected bool Equals(ScalarFunction other)
-    {
-        return Identifier.Equals(other.Identifier) && Arguments.SequenceEqual(other.Arguments);
-    }
-
-    public override bool Equals(object? obj)
-    {
-        return ReferenceEquals(this, obj) || obj is ScalarFunction other && Equals(other);
-    }
+    protected bool Equals(ScalarFunction other) => Identifier.Equals(other.Identifier) && Arguments.SequenceEqual(other.Arguments);
+    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is ScalarFunction other && Equals(other);
 
     public override int GetHashCode()
     {
@@ -172,8 +96,5 @@ public class ScalarFunction
         }
     }
 
-    public override string ToString()
-    {
-        return $"{Identifier.Name}({string.Join(", ", Arguments)})";
-    }
+    public override string ToString() => $"{Identifier.Name}({string.Join(", ", Arguments)})";
 }

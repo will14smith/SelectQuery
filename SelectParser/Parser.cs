@@ -112,6 +112,8 @@ public class Parser
             {
                 SelectToken.Equal => BinaryOperator.Equal,
                 SelectToken.NotEqual => BinaryOperator.NotEqual,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
             };
             
             expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!)); 
@@ -144,6 +146,8 @@ public class Parser
                 SelectToken.LesserOrEqual => BinaryOperator.LesserOrEqual,
                 SelectToken.Greater => BinaryOperator.Greater,
                 SelectToken.GreaterOrEqual => BinaryOperator.GreaterOrEqual,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
             };
             
             expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!));
@@ -355,6 +359,8 @@ public class Parser
             {
                 SelectToken.Add => BinaryOperator.Add,
                 SelectToken.Negate => BinaryOperator.Subtract,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
             };
             
             expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!)); 
@@ -385,6 +391,8 @@ public class Parser
                 SelectToken.Star => BinaryOperator.Multiply,
                 SelectToken.Divide => BinaryOperator.Divide,
                 SelectToken.Modulo => BinaryOperator.Modulo,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
             };
             
             expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!)); 
@@ -465,9 +473,9 @@ public class Parser
             if (!expr.Success) return expr;
             
             next = SelectTokenizer.Read(ref tokenizer);
-            if(next.Type != SelectToken.RightBracket) return Result<Expression>.UnexpectedToken(next);
+            if (next.Type != SelectToken.RightBracket) return Result<Expression>.UnexpectedToken(next);
             
-            return Result<Expression>.Ok(new Expression.FunctionExpression(new ScalarFunction(initial, new [] { expr.Value! })));
+            return Result<Expression>.Ok(new Expression.FunctionExpression(new ScalarFunction(initial, [expr.Value!])));
         }
         
         if (next.Type != SelectToken.Dot)
