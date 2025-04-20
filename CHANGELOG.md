@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.0](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.3.0...SelectQuery-v2.0.0) (2025-04-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* **parser:** Change qualified expressions to be a list instead of recursive
+* **parser:** Replace query parser with handwritten one ([#22](https://github.com/will14smith/SelectQuery/issues/22))
+
+### Features
+
+* **parser:** Change qualified expressions to be a list instead of recursive ([3fbcecb](https://github.com/will14smith/SelectQuery/commit/3fbcecbdf3dcef2db43d49a156aa924152f796f8))
+* **parser:** Replace query parser with handwritten one ([#22](https://github.com/will14smith/SelectQuery/issues/22)) ([14d2132](https://github.com/will14smith/SelectQuery/commit/14d2132ba0bea6de2c81a49c888c7fb21177ef84))
+
 ## [1.3.0](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.2.0...SelectQuery-v1.3.0) (2024-10-15)
 
 
