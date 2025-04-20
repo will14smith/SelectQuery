@@ -6,16 +6,11 @@ using Utf8Json;
 
 namespace SelectQuery.Evaluation;
 
-internal class AggregateProcessor
+internal class AggregateProcessor(Query query)
 {
     private static readonly ExpressionEvaluator ExpressionEvaluator = new();
 
-    private readonly IReadOnlyList<ColumnState> _columns;
-
-    public AggregateProcessor(Query query)
-    {
-        _columns = ColumnState.CreateForQuery(query);
-    }
+    private readonly IReadOnlyList<ColumnState> _columns = ColumnState.CreateForQuery(query);
 
     public void ProcessRecord(object record)
     {
@@ -47,22 +42,15 @@ internal class AggregateProcessor
         writer.WriteEndObject();
     }
     
-    private abstract class ColumnState
+    private abstract class ColumnState(Column column, Query query)
     {
-        private readonly Query _query;
-        public Column Column { get; }
-
-        protected ColumnState(Column column, Query query)
-        {
-            _query = query;
-            Column = column;
-        }
+        public Column Column { get; } = column;
 
         public static IReadOnlyList<ColumnState> CreateForQuery(Query query)
         {
             var states = new List<ColumnState>();
 
-            var columns = query.Select.AsT1.Columns;
+            var columns = ((SelectClause.List)query.Select).Columns;
             foreach (var column in columns)
             {
                 states.Add(CreateForColumn(query, column));
@@ -73,41 +61,35 @@ internal class AggregateProcessor
 
         private static ColumnState CreateForColumn(Query query, Column column)
         {
-            if (!(column.Expression.Value is Expression.FunctionExpression functionExpression))
+            if (column.Expression is not Expression.FunctionExpression { Function: AggregateFunction aggregateFunction })
             {
                 throw new NotImplementedException();
             }
 
-            if (!(functionExpression.Function.Value is AggregateFunction aggregateFunction))
+            return aggregateFunction switch
             {
-                throw new NotImplementedException();
-            }
-
-            return aggregateFunction.Match<ColumnState>(
-                x => new AverageColumnState(column, query, x),                
-                x => new CountColumnState(column, query, x),                
-                x => new MaxColumnState(column, query, x),                
-                x => new MinColumnState(column, query, x),                
-                x => new SumColumnState(column, query, x)                
-            );
+                AggregateFunction.Average average => new AverageColumnState(column, query, average),
+                AggregateFunction.Count count => new CountColumnState(column, query, count),
+                AggregateFunction.Max max => new MaxColumnState(column, query, max),
+                AggregateFunction.Min min => new MinColumnState(column, query, min),
+                AggregateFunction.Sum sum => new SumColumnState(column, query, sum),
+                _ => throw new ArgumentOutOfRangeException(nameof(aggregateFunction))
+            };
         }
         
         public abstract void ProcessRecord(object record);
         public abstract void WriteResult(ref JsonWriter writer);
 
-        protected Option<T> Evaluate<T>(Expression expression, object record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, _query.From, record);
+        protected Option<T> Evaluate<T>(Expression expression, object record) => ExpressionEvaluator.EvaluateOnTable<T>(expression, query.From, record);
 
-        private class AverageColumnState : ColumnState
+        private class AverageColumnState(Column column, Query query, AggregateFunction.Average average) : ColumnState(column, query)
         {
-            private readonly AggregateFunction.Average _average;
             private int _count;
             private decimal _acc;
-            
-            public AverageColumnState(Column column, Query query, AggregateFunction.Average average) : base(column, query) => _average = average;
 
             public override void ProcessRecord(object record)
             {
-                var value = Evaluate<object>(_average.Expression, record);
+                var value = Evaluate<object>(average.Expression, record);
                 if (value.IsNone)
                 {
                     return;
@@ -132,18 +114,15 @@ internal class AggregateProcessor
             }
         }
         
-        private class CountColumnState : ColumnState
+        private class CountColumnState(Column column, Query query, AggregateFunction.Count count) : ColumnState(column, query)
         {
-            private readonly AggregateFunction.Count _count;
             private int _acc;
-            
-            public CountColumnState(Column column, Query query, AggregateFunction.Count count) : base(column, query) => _count = count;
-            
+
             public override void ProcessRecord(object record)
             {
-                if (!_count.Expression.IsNone)
+                if (!count.Expression.IsNone)
                 {
-                    var value = Evaluate<object>(_count.Expression.AsT0, record);
+                    var value = Evaluate<object>(count.Expression.AsT0, record);
                     if (value.IsNone)
                     {
                         return;
@@ -159,16 +138,13 @@ internal class AggregateProcessor
             }
         }
         
-        private class MaxColumnState : ColumnState
+        private class MaxColumnState(Column column, Query query, AggregateFunction.Max max) : ColumnState(column, query)
         {
-            private readonly AggregateFunction.Max _max;
             private decimal? _best;
-            
-            public MaxColumnState(Column column, Query query, AggregateFunction.Max max) : base(column, query) => _max = max;
-            
+
             public override void ProcessRecord(object record)
             {
-                var result = Evaluate<object>(_max.Expression, record);
+                var result = Evaluate<object>(max.Expression, record);
                 if (result.IsNone)
                 {
                     return;
@@ -194,16 +170,13 @@ internal class AggregateProcessor
             }
         }
         
-        private class MinColumnState : ColumnState
+        private class MinColumnState(Column column, Query query, AggregateFunction.Min min) : ColumnState(column, query)
         {
-            private readonly AggregateFunction.Min _min;
             private decimal? _best;
 
-            public MinColumnState(Column column, Query query, AggregateFunction.Min min) : base(column, query) => _min = min;
-            
             public override void ProcessRecord(object record)
             {
-                var result = Evaluate<object>(_min.Expression, record);
+                var result = Evaluate<object>(min.Expression, record);
                 if (result.IsNone)
                 {
                     return;
@@ -229,16 +202,13 @@ internal class AggregateProcessor
             }
         }
         
-        private class SumColumnState : ColumnState
+        private class SumColumnState(Column column, Query query, AggregateFunction.Sum sum) : ColumnState(column, query)
         {
-            private readonly AggregateFunction.Sum _sum;
             private decimal? _acc;
-            
-            public SumColumnState(Column column, Query query, AggregateFunction.Sum sum) : base(column, query) => _sum = sum;
-            
+
             public override void ProcessRecord(object record)
             {
-                var value = Evaluate<object>(_sum.Expression, record);
+                var value = Evaluate<object>(sum.Expression, record);
                 if (value.IsNone)
                 {
                     return;

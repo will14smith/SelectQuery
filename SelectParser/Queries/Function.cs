@@ -1,161 +1,91 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using OneOf;
 
 namespace SelectParser.Queries;
 
-[GenerateOneOf]
-public partial class Function : OneOfBase<AggregateFunction, ScalarFunction>
+public abstract class Function : IEquatable<Function>
 {
-    public override string ToString() => Value.ToString();
+    public abstract bool Equals(Function? other);
 }
 
-[GenerateOneOf]
-public partial class AggregateFunction : OneOfBase<AggregateFunction.Average, AggregateFunction.Count,
-    AggregateFunction.Max, AggregateFunction.Min, AggregateFunction.Sum>
+public abstract class AggregateFunction : Function, IEquatable<AggregateFunction>
 {
-    public override string ToString() => Value.ToString();
+    public override bool Equals(Function? other) => Equals(other as AggregateFunction);
+    public abstract bool Equals(AggregateFunction? other);
+    public abstract override bool Equals(object? obj);
+    public abstract override int GetHashCode();
 
-    public class Average
+    public class Average(Expression expression) : AggregateFunction, IEquatable<Average>
     {
-        public Average(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Average other) => base.Equals(other) && Expression.Equals(other.Expression);
-
-        public override bool Equals(object obj) =>
-            ReferenceEquals(this, obj) || obj is Average other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        public override bool Equals(AggregateFunction? other) => Equals(other as Average);
+        public bool Equals(Average? other) => other is not null && Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Average other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"AVG({Expression})";
     }
 
-    public class Count
+    public class Count(Option<Expression> expression) : AggregateFunction, IEquatable<Count>
     {
-        public Count(Option<Expression> expression)
-        {
-            Expression = expression;
-        }
+        public Option<Expression> Expression { get; } = expression;
 
-        public Option<Expression> Expression { get; }
+        public override bool Equals(AggregateFunction? other) => Equals(other as Count);
+        public bool Equals(Count? other) => other is not null && Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Count other && Equals(other);
 
-        protected bool Equals(Count other) => base.Equals(other) && Expression.Equals(other.Expression);
-
-        public override bool Equals(object obj) =>
-            ReferenceEquals(this, obj) || obj is Count other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"COUNT({(Expression.IsSome ? Expression : "*")})";
     }
 
-    public class Max
+    public class Max(Expression expression) : AggregateFunction, IEquatable<Max>
     {
-        public Max(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Max other) => base.Equals(other) && Expression.Equals(other.Expression);
-        public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is Max other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        public override bool Equals(AggregateFunction? other) => Equals(other as Max);
+        public bool Equals(Max? other) => other is not null && Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Max other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"MAX({Expression})";
     }
 
-    public class Min
+    public class Min(Expression expression) : AggregateFunction, IEquatable<Min>
     {
-        public Min(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Min other) => base.Equals(other) && Expression.Equals(other.Expression);
-        public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is Min other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        public override bool Equals(AggregateFunction? other) => Equals(other as Min);
+        public bool Equals(Min? other) => other is not null && Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Min other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"MIN({Expression})";
     }
 
-    public class Sum
+    public class Sum(Expression expression) : AggregateFunction, IEquatable<Sum>
     {
-        public Sum(Expression expression)
-        {
-            Expression = expression;
-        }
+        public Expression Expression { get; } = expression;
 
-        public Expression Expression { get; }
-
-        protected bool Equals(Sum other) => base.Equals(other) && Expression.Equals(other.Expression);
-        public override bool Equals(object obj) => ReferenceEquals(this, obj) || obj is Sum other && Equals(other);
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (base.GetHashCode() * 397) ^ Expression.GetHashCode();
-            }
-        }
+        public override bool Equals(AggregateFunction? other) => Equals(other as Sum);
+        public bool Equals(Sum? other) => other is not null && Expression.Equals(other.Expression);
+        public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Sum other && Equals(other);
+        public override int GetHashCode() => Expression.GetHashCode();
 
         public override string ToString() => $"SUM({Expression})";
     }
 }
 
-public class ScalarFunction
+public class ScalarFunction(Expression.Identifier identifier, IReadOnlyList<Expression> arguments) : Function, IEquatable<ScalarFunction>
 {
-    public ScalarFunction(Expression.Identifier identifier, IReadOnlyList<Expression> arguments)
-    {
-        Identifier = identifier;
-        Arguments = arguments;
-    }
+    public Expression.Identifier Identifier { get; } = identifier;
+    public IReadOnlyList<Expression> Arguments { get; } = arguments;
 
-    public Expression.Identifier Identifier { get; }
-    public IReadOnlyList<Expression> Arguments { get; }
-
-    protected bool Equals(ScalarFunction other)
-    {
-        return Identifier.Equals(other.Identifier) && Arguments.SequenceEqual(other.Arguments);
-    }
-
-    public override bool Equals(object? obj)
-    {
-        return ReferenceEquals(this, obj) || obj is ScalarFunction other && Equals(other);
-    }
+    public override bool Equals(Function? other) => Equals(other as ScalarFunction);
+    public bool Equals(ScalarFunction? other) => other is not null && Identifier.Equals(other.Identifier) && Arguments.SequenceEqual(other.Arguments);
+    public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is ScalarFunction other && Equals(other);
 
     public override int GetHashCode()
     {
@@ -172,8 +102,5 @@ public class ScalarFunction
         }
     }
 
-    public override string ToString()
-    {
-        return $"{Identifier.Name}({string.Join(", ", Arguments)})";
-    }
+    public override string ToString() => $"{Identifier.Name}({string.Join(", ", Arguments)})";
 }

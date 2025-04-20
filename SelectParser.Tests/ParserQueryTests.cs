@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using SelectParser.Queries;
 using Xunit;
 using static SelectParser.Tests.ParserTestHelpers;
 
@@ -15,7 +16,7 @@ public class ParserQueryTests
         var result = Parse(Parser.Query, input);
 
         var query = AssertSuccess(result);
-        Assert.True(query.Select.IsT0);
+        Assert.IsType<SelectClause.Star>(query.Select);
         Assert.Equal("test", query.From.Table);
     }
 
@@ -37,7 +38,7 @@ public class ParserQueryTests
         var result = Parse(Parser.Query, input);
 
         var query = AssertSuccess(result);
-        Assert.True(query.Select.IsT0);
+        Assert.IsType<SelectClause.Star>(query.Select);
         Assert.Equal("test", query.From.Table);
         var where = AssertSome(query.Where);
         AssertIdentifier("col", where.Condition);
@@ -51,7 +52,7 @@ public class ParserQueryTests
         var result = Parse(Parser.Query, input);
 
         var query = AssertSuccess(result);
-        Assert.True(query.Select.IsT0);
+        Assert.IsType<SelectClause.Star>(query.Select);
         Assert.Equal("test", query.From.Table);
         var order = AssertSome(query.Order);
         var (orderExpression, _) = Assert.Single(order.Columns);
@@ -66,7 +67,7 @@ public class ParserQueryTests
         var result = Parse(Parser.Query, input);
 
         var query = AssertSuccess(result);
-        Assert.True(query.Select.IsT0);
+        Assert.IsType<SelectClause.Star>(query.Select);
         Assert.Equal("test", query.From.Table);
         var limit = AssertSome(query.Limit);
         Assert.Equal(10, limit.Limit);
@@ -80,7 +81,7 @@ public class ParserQueryTests
         var result = Parse(Parser.Query, input);
 
         var query = AssertSuccess(result);
-        Assert.True(query.Select.IsT0);
+        Assert.IsType<SelectClause.Star>(query.Select);
         Assert.Equal("test", query.From.Table);
         var where = AssertSome(query.Where);
         AssertIdentifier("col1", where.Condition);
@@ -96,7 +97,7 @@ public class ParserQueryTests
     {
         var input = "SELECT * FROM test ORDER BY col1 WHERE col2";
 
-        var result = Parse(Parser.Query, input);
+        var result = Parser.Parse(input);
 
         AssertFailed(result);
     }

@@ -1,406 +1,822 @@
 ﻿using System;
-using System.Linq;
-using JetBrains.Annotations;
-using OneOf.Types;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using SelectParser.Queries;
-using Superpower;
-using Superpower.Model;
-using Superpower.Parsers;
 
 namespace SelectParser;
 
 public class Parser
 {
-    private static readonly TokenListParser<SelectToken, (string Identifier, bool CaseSensitive)> Identifier =
-        Token.EqualTo(SelectToken.Identifier)
-            .Select(ParseIdentifier);
-
-    private static readonly TokenListParser<SelectToken, decimal> Number =
-        Token.EqualTo(SelectToken.NumberLiteral)
-            .Select(x => decimal.Parse(x.ToStringValue()));
-
-    private static readonly TokenListParser<SelectToken, string> String =
-        Token.EqualTo(SelectToken.StringLiteral)
-            .Select(ParseString);
-
-    private static readonly TokenListParser<SelectToken, bool> Boolean =
-        Token.EqualTo(SelectToken.BooleanLiteral)
-            .Select(x => bool.Parse(x.ToStringValue()));
-
-
-    private static readonly TokenListParser<SelectToken, string> Alias =
-        Token.Sequence(SelectToken.As, SelectToken.Identifier).Select(x => ParseIdentifier(x[1]).Identifier)
-            .Or(Identifier.Select(x => x.Identifier));
-
     #region function
 
-    private static readonly TokenListParser<SelectToken, Function> AvgFunction = SingleParameterFunction(SelectToken.Avg, x => new AggregateFunction.Average(x));
-    private static readonly TokenListParser<SelectToken, Function> CountFunction = SingleParameterFunction(SelectToken.Count, BuildCountFunction);
-    private static readonly TokenListParser<SelectToken, Function> MaxFunction = SingleParameterFunction(SelectToken.Max, x => new AggregateFunction.Max(x));
-    private static readonly TokenListParser<SelectToken, Function> MinFunction = SingleParameterFunction(SelectToken.Min, x => new AggregateFunction.Min(x));
-    private static readonly TokenListParser<SelectToken, Function> SumFunction = SingleParameterFunction(SelectToken.Sum, x => new AggregateFunction.Sum(x));
-
-    private static readonly TokenListParser<SelectToken, Function> AggregateFunction = AvgFunction.Or(CountFunction).Or(MaxFunction).Or(MinFunction).Or(SumFunction);
-
-    private static AggregateFunction BuildCountFunction(Expression expression)
+    private static Result<Expression> SingleParameterFunction(ref SelectTokenizer tokenizer, Func<Expression, AggregateFunction> constructor)
     {
-        if (expression.Value is Expression.Identifier { Name: "*" })
+        var leftBracket = SelectTokenizer.Read(ref tokenizer);
+        if(leftBracket.Type != SelectToken.LeftBracket) return Result<Expression>.UnexpectedToken(leftBracket);
+
+        var argument = Expression(ref tokenizer);
+        if (!argument.Success) return argument;
+        
+        var rightBracket = SelectTokenizer.Read(ref tokenizer);
+        if(rightBracket.Type != SelectToken.RightBracket) return Result<Expression>.UnexpectedToken(rightBracket);
+
+        var result = constructor(argument.Value!);
+        
+        return Result<Expression>.Ok(new Expression.FunctionExpression(result));
+    }
+    
+    #endregion
+    
+    #region expression
+
+    public static Result<Expression> Expression(ref SelectTokenizer tokenizer) => BooleanOr(ref tokenizer);
+    public static Result<Expression> BooleanOr(ref SelectTokenizer tokenizer)
+    {
+        var expr = BooleanAnd(ref tokenizer);
+        if (!expr.Success) return expr;
+        
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        while(next.Type == SelectToken.Or)
         {
-            return new AggregateFunction.Count(new None());
-        }
+            tokenizer = peekTokenizer;
+            var rightExpr = BooleanAnd(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
             
-        return new AggregateFunction.Count(expression);
+            expr = Result<Expression>.Ok(new Expression.Binary(BinaryOperator.Or, expr.Value!, rightExpr.Value!)); 
+            
+            peekTokenizer = tokenizer;
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+        
+        return expr;
     }
 
-    private static readonly TokenListParser<SelectToken, Function> ScalarFunction =
-        from name in Token.EqualTo(SelectToken.Identifier)
-        from begin in Token.EqualTo(SelectToken.LeftBracket)
-        from expr in Superpower.Parse.Ref(() => Expression)
-        from end in Token.EqualTo(SelectToken.RightBracket)
-        select (Function) new ScalarFunction(new Expression.Identifier(name.ToStringValue(), false), new [] { expr });
-
-    private static readonly TokenListParser<SelectToken, Function> Function = AggregateFunction.Or(ScalarFunction.Try());
-    private static readonly TokenListParser<SelectToken, Expression> FunctionExpression = Function.Select(x => (Expression) new Expression.FunctionExpression(x));
-
-    private static TokenListParser<SelectToken, Function> SingleParameterFunction(SelectToken nameToken, Func<Expression, AggregateFunction> constructor) => SingleParameterFunction(nameToken, x => (Function) constructor(x));
-    private static TokenListParser<SelectToken, Function> SingleParameterFunction(SelectToken nameToken, Func<Expression, Function> constructor) =>
-        from name in Token.EqualTo(nameToken)
-        from begin in Token.EqualTo(SelectToken.LeftBracket)
-        from expr in Superpower.Parse.Ref(() => Expression)
-        from end in Token.EqualTo(SelectToken.RightBracket)
-        select constructor(expr);
-
-    #endregion
-        
-    #region expression 
-
-    private static readonly TokenListParser<SelectToken, Expression> QualifiedIdentifier =
-        Identifier
-            .Or(Token.EqualTo(SelectToken.Star).Select(_ => ("*", false)))
-            .Select(x => new Expression.Identifier(x.Item1, x.Item2))
-            .AtLeastOnceDelimitedBy(Token.EqualTo(SelectToken.Dot))
-            .Select(BuildQualified);
-    private static Expression BuildQualified(Expression.Identifier[] identifiers)
+    public static Result<Expression> BooleanAnd(ref SelectTokenizer tokenizer)
     {
-        switch (identifiers.Length)
+        var expr = BooleanUnary(ref tokenizer);
+        if (!expr.Success) return expr;
+        
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        while(next.Type == SelectToken.And)
         {
-            case 0: throw new InvalidOperationException("Cannot build a qualified expression from no identifiers");
-            case 1: return identifiers[0];
+            tokenizer = peekTokenizer;
+            var rightExpr = BooleanUnary(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
+            
+            expr = Result<Expression>.Ok(new Expression.Binary(BinaryOperator.And, expr.Value!, rightExpr.Value!)); 
+            
+            peekTokenizer = tokenizer;
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+        
+        return expr;
+    }
+
+    public static Result<Expression> BooleanUnary(ref SelectTokenizer tokenizer)
+    {
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type == SelectToken.Not)
+        {
+            tokenizer = peekTokenizer;
+            var term = Equality(ref tokenizer);
+            if (!term.Success) return term;
+            
+            return Result<Expression>.Ok(new Expression.Unary(UnaryOperator.Not, term.Value!));
         }
 
-        Expression result = identifiers[identifiers.Length - 1];
-        for (var i = identifiers.Length - 2; i >= 0; i--)
+        return Equality(ref tokenizer);
+    }
+
+    public static Result<Expression> Equality(ref SelectTokenizer tokenizer)
+    {
+        var expr = Comparative(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        while(next.Type is SelectToken.Equal or SelectToken.NotEqual)
+        {
+            tokenizer = peekTokenizer;
+            var rightExpr = Comparative(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
+
+            var op = next.Type switch
+            {
+                SelectToken.Equal => BinaryOperator.Equal,
+                SelectToken.NotEqual => BinaryOperator.NotEqual,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
+            };
+            
+            expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!)); 
+            
+            peekTokenizer = tokenizer;
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+
+        return expr;
+    }
+
+    public static Result<Expression> Comparative(ref SelectTokenizer tokenizer)
+    {
+        var expr = StringConcatenation(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type is SelectToken.Lesser or SelectToken.LesserOrEqual or SelectToken.Greater or SelectToken.GreaterOrEqual)
+        {
+            tokenizer = peekTokenizer;
+
+            var rightExpr = StringConcatenation(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
+
+            var op = next.Type switch
+            {
+                SelectToken.Lesser => BinaryOperator.Lesser,
+                SelectToken.LesserOrEqual => BinaryOperator.LesserOrEqual,
+                SelectToken.Greater => BinaryOperator.Greater,
+                SelectToken.GreaterOrEqual => BinaryOperator.GreaterOrEqual,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
+            };
+            
+            expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!));
+        }
+
+        return expr;
+    }
+
+    public static Result<Expression> StringConcatenation(ref SelectTokenizer tokenizer)
+    {
+        var expr = Pattern(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type is SelectToken.Concat)
+        {
+            tokenizer = peekTokenizer;
+
+            var rightExpr = Pattern(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
+            
+            expr = Result<Expression>.Ok(new Expression.Binary(BinaryOperator.Concat, expr.Value!, rightExpr.Value!));
+        }
+
+        return expr;
+    }
+    
+    public static Result<Expression> Pattern(ref SelectTokenizer tokenizer)
+    {
+        var expr = Containment(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var peekNext = SelectTokenizer.Read(ref peekTokenizer);
+        
+        if (peekNext.Type != SelectToken.Like)
+        {
+            return expr;
+        }
+
+        tokenizer = peekTokenizer;
+
+        var pattern = Expression(ref tokenizer);
+        if (!pattern.Success) return pattern;
+        
+        peekTokenizer = tokenizer;
+        peekNext = SelectTokenizer.Read(ref peekTokenizer);
+        
+        if (peekNext.Type != SelectToken.Escape)
+        {
+            return Result<Expression>.Ok(new Expression.Like(expr.Value!, pattern.Value!, new Option<Expression>()));
+        }
+
+        tokenizer = peekTokenizer;
+
+        var escape = Expression(ref tokenizer);
+        if (!escape.Success) return escape;
+        
+        return Result<Expression>.Ok(new Expression.Like(expr.Value!, pattern.Value!, escape.Value!));
+    }
+
+    public static Result<Expression> Containment(ref SelectTokenizer tokenizer)
+    {
+        var expr = Presence(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        var negate = next.Type is SelectToken.Not;
+        if (negate)
+        {
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+        
+        if (next.Type != SelectToken.Between)
+        {
+            // don't accept peek tokenizer
+            return expr;
+        }
+
+        tokenizer = peekTokenizer;
+        
+        var lower = Presence(ref tokenizer);
+        if (!lower.Success) return lower;
+
+        next = SelectTokenizer.Read(ref tokenizer);
+        if(next.Type != SelectToken.And) return Result<Expression>.UnexpectedToken(next);
+        
+        var upper = Expression(ref tokenizer);
+        if (!upper.Success) return upper;
+        
+        return Result<Expression>.Ok(new Expression.Between(negate, expr.Value!, lower.Value!, upper.Value!));
+    }
+
+    public static Result<Expression> Presence(ref SelectTokenizer tokenizer)
+    {
+        var expr = IsNull(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type != SelectToken.Is)
+        {
+            return expr;
+        }
+        
+        next = SelectTokenizer.Read(ref peekTokenizer);
+
+        var negate = next.Type is SelectToken.Not;
+        if (negate)
+        {
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+
+        if (next.Type != SelectToken.Missing)
+        {
+            // don't accept peek tokenizer
+            return expr;
+        }
+
+        tokenizer = peekTokenizer;
+        return Result<Expression>.Ok(new Expression.Presence(expr.Value!, !negate));
+    }
+
+    public static Result<Expression> IsNull(ref SelectTokenizer tokenizer)
+    {
+        var expr = Membership(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type != SelectToken.Is)
+        {
+            return expr;
+        }
+        
+        next = SelectTokenizer.Read(ref peekTokenizer);
+
+        var negate = next.Type is SelectToken.Not;
+        if (negate)
+        {
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+
+        if (next.Type != SelectToken.Null)
+        {
+            // don't accept peek tokenizer
+            return expr;
+        }
+
+        tokenizer = peekTokenizer;
+        return Result<Expression>.Ok(new Expression.IsNull(expr.Value!, negate));
+    }
+
+    public static Result<Expression> Membership(ref SelectTokenizer tokenizer)
+    {
+        var expr = Additive(ref tokenizer);
+        if (!expr.Success) return expr;
+
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type != SelectToken.In)
+        {
+            return expr;
+        }
+
+        tokenizer = peekTokenizer;
+
+        next = SelectTokenizer.Read(ref tokenizer);
+        if(next.Type != SelectToken.LeftBracket) return Result<Expression>.UnexpectedToken(next);
+
+        var values = new List<Expression>();
+        while (true)
+        {
+            var value = Expression(ref tokenizer);
+            if (!value.Success) return expr;
+
+            values.Add(value.Value!);
+            
+            next = SelectTokenizer.Read(ref tokenizer);
+            if (next.Type == SelectToken.RightBracket) break;
+            if (next.Type != SelectToken.Comma) return Result<Expression>.UnexpectedToken(next);
+        }
+        
+        return Result<Expression>.Ok(new Expression.In(expr.Value!, values));
+    }
+
+    public static Result<Expression> Additive(ref SelectTokenizer tokenizer)
+    {
+        var expr = Multiplicative(ref tokenizer);
+        if (!expr.Success) return expr;
+        
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        while(next.Type is SelectToken.Add or SelectToken.Negate)
+        {
+            tokenizer = peekTokenizer;
+            var rightExpr = Multiplicative(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
+
+            var op = next.Type switch
+            {
+                SelectToken.Add => BinaryOperator.Add,
+                SelectToken.Negate => BinaryOperator.Subtract,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
+            };
+            
+            expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!)); 
+            
+            peekTokenizer = tokenizer;
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+        
+        return expr;
+    }
+
+    public static Result<Expression> Multiplicative(ref SelectTokenizer tokenizer)
+    {
+        var expr = Unary(ref tokenizer);
+        if (!expr.Success) return expr;
+        
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        while(next.Type is SelectToken.Star or SelectToken.Divide or SelectToken.Modulo)
+        {
+            tokenizer = peekTokenizer;
+            var rightExpr = Unary(ref tokenizer);
+            if (!rightExpr.Success) return rightExpr;
+
+            var op = next.Type switch
+            {
+                SelectToken.Star => BinaryOperator.Multiply,
+                SelectToken.Divide => BinaryOperator.Divide,
+                SelectToken.Modulo => BinaryOperator.Modulo,
+                
+                _ => throw new InvalidOperationException("invalid operator"),
+            };
+            
+            expr = Result<Expression>.Ok(new Expression.Binary(op, expr.Value!, rightExpr.Value!)); 
+            
+            peekTokenizer = tokenizer;
+            next = SelectTokenizer.Read(ref peekTokenizer);
+        }
+        
+        return expr;
+    }
+
+    public static Result<Expression> Unary(ref SelectTokenizer tokenizer)
+    {
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type == SelectToken.Negate)
+        {
+            tokenizer = peekTokenizer;
+            var term = Term(ref tokenizer);
+            if (!term.Success) return term;
+            
+            return Result<Expression>.Ok(new Expression.Unary(UnaryOperator.Negate, term.Value!));
+        }
+
+        return Term(ref tokenizer);
+    }
+
+    public static Result<Expression> Term(ref SelectTokenizer tokenizer)
+    {
+        var next = SelectTokenizer.Read(ref tokenizer);
+
+        switch (next.Type)
+        {
+            case SelectToken.NumberLiteral: return Result<Expression>.Ok(new Expression.NumberLiteral(ParseNumber(next)));
+            case SelectToken.StringLiteral: return Result<Expression>.Ok(new Expression.StringLiteral(ParseString(next)));
+            case SelectToken.BooleanLiteral: return Result<Expression>.Ok(new Expression.BooleanLiteral(ParseBoolean(next)));
+            case SelectToken.Identifier:
+            {
+                var identifier = ParseIdentifier(next);
+                return QualifiedIdentifier(ref tokenizer, identifier);
+            }
+            case SelectToken.Star: return Result<Expression>.Ok(new Expression.Identifier("*", false));
+            case SelectToken.LeftBracket:
+            {
+                var expr = Expression(ref tokenizer);
+                
+                next = SelectTokenizer.Read(ref tokenizer);
+                if (next.Type != SelectToken.RightBracket)
+                {
+                    return Result<Expression>.UnexpectedToken(next);
+                }
+
+                return expr;
+            }
+            
+            case SelectToken.Avg: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Average(x));
+            case SelectToken.Count: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Count(x is Expression.Identifier { Name: "*" } ? new None() : x));
+            case SelectToken.Max: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Max(x));
+            case SelectToken.Min: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Min(x));
+            case SelectToken.Sum: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Sum(x));
+
+            default: return Result<Expression>.UnexpectedToken(next);
+        }
+    }
+    
+    private static Result<Expression> QualifiedIdentifier(ref SelectTokenizer tokenizer, Expression.Identifier initial)
+    {
+        var peekTokenizer = tokenizer;
+        var next = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (next.Type == SelectToken.LeftBracket)
+        {
+            // scalar function
+            tokenizer = peekTokenizer;
+
+            var expr = Expression(ref tokenizer);
+            if (!expr.Success) return expr;
+            
+            next = SelectTokenizer.Read(ref tokenizer);
+            if (next.Type != SelectToken.RightBracket) return Result<Expression>.UnexpectedToken(next);
+            
+            return Result<Expression>.Ok(new Expression.FunctionExpression(new ScalarFunction(initial, [expr.Value!])));
+        }
+        
+        if (next.Type != SelectToken.Dot)
+        {
+            return Result<Expression>.Ok(initial);
+        }
+        
+        var identifiers = new List<Expression.Identifier>
+        {
+            initial
+        };
+
+        tokenizer = peekTokenizer;
+        while (true)
+        {
+            next = SelectTokenizer.Read(ref tokenizer);
+
+            if (next.Type == SelectToken.Star)
+            {
+                identifiers.Add(new Expression.Identifier("*", false));
+                break;
+            }
+            
+            if (next.Type != SelectToken.Identifier)
+            {
+                return Result<Expression>.UnexpectedToken(next);
+            }
+
+            identifiers.Add(ParseIdentifier(next));
+            
+            peekTokenizer = tokenizer;
+            next = SelectTokenizer.Read(ref peekTokenizer);
+
+            if (next.Type != SelectToken.Dot)
+            {
+                break;
+            }
+            
+            tokenizer = peekTokenizer;
+        }
+        
+        Expression result = identifiers[identifiers.Count - 1];
+        for (var i = identifiers.Count - 2; i >= 0; i--)
         {
             result = new Expression.Qualified(identifiers[i], result);
         }
+        
+        return Result<Expression>.Ok(result);
+    }
+
+    #endregion
+    
+    #region select
+    
+    public static Result<SelectClause> SelectClause(ref SelectTokenizer tokenizer)
+    {
+        var next = SelectTokenizer.Read(ref tokenizer);
+        if (next.Type != SelectToken.Select) return Result<SelectClause>.UnexpectedToken(next);
+        
+        var peekTokenizer = tokenizer;
+        var peekNext = SelectTokenizer.Read(ref peekTokenizer);
+
+        if (peekNext.Type == SelectToken.Star)
+        {
+            tokenizer = peekTokenizer;
+            return Result<SelectClause>.Ok(new SelectClause.Star());
+        }
+
+        var columns = new List<Column>();
+        while (true)
+        {
+            var expression = Expression(ref tokenizer);
+            if(!expression.Success) return Result<SelectClause>.FromError(expression);
+            
+            var alias = Alias(ref tokenizer);
+            if(!alias.Success) return Result<SelectClause>.FromError(expression);
+
+            columns.Add(new Column(expression.Value!, alias.Value));
+            
+            peekTokenizer = tokenizer;
+            peekNext = SelectTokenizer.Read(ref peekTokenizer);
+
+            if (peekNext.Type != SelectToken.Comma)
+            {
+                break;
+            }
+
+            tokenizer = peekTokenizer;
+        }
+
+        return Result<SelectClause>.Ok(new SelectClause.List(columns));
+    }
+
+    private static Result<Option<string>> Alias(ref SelectTokenizer tokenizer)
+    {
+        var peekTokenizer = tokenizer;
+        var peekNext = SelectTokenizer.Read(ref peekTokenizer);
+
+        switch (peekNext.Type)
+        {
+            case SelectToken.As:
+            {
+                tokenizer = peekTokenizer;
+            
+                var next = SelectTokenizer.Read(ref tokenizer);
+                if (next.Type != SelectToken.Identifier) return Result<Option<string>>.UnexpectedToken(next);
+
+                return Result<Option<string>>.Ok(ParseIdentifier(next).Name);
+            }
+            
+            case SelectToken.Identifier:
+                tokenizer = peekTokenizer;
+                return Result<Option<string>>.Ok(ParseIdentifier(peekNext).Name);
+            
+            default:
+                return Result<Option<string>>.Ok(new Option<string>());
+        }
+    }
+    
+    #endregion
+    
+    #region from
+
+    public static Result<FromClause> FromClause(ref SelectTokenizer tokenizer)
+    {
+        var next = SelectTokenizer.Read(ref tokenizer);
+        if (next.Type != SelectToken.From) return Result<FromClause>.UnexpectedToken(next);
+
+        next = SelectTokenizer.Read(ref tokenizer);
+        if (next.Type != SelectToken.Identifier) return Result<FromClause>.UnexpectedToken(next);
+        var tableName = ParseIdentifier(next);
+        
+        var alias = Alias(ref tokenizer);
+        if (!alias.Success) return Result<FromClause>.FromError(alias);
+        
+        return Result<FromClause>.Ok(new FromClause(tableName.Name, alias.Value));
+    }
+    
+    #endregion
+    
+    #region where
+    
+    public static Result<WhereClause?> WhereClause(ref SelectTokenizer tokenizer)
+    {
+        var peekTokenizer = tokenizer;
+        var peekNext = SelectTokenizer.Read(ref peekTokenizer);
+        if (peekNext.Type != SelectToken.Where) return Result<WhereClause?>.Ok(null);
+
+        tokenizer = peekTokenizer;
+        
+        var expr = Expression(ref tokenizer);
+        if (!expr.Success) return Result<WhereClause?>.FromError(expr);
+        
+        return Result<WhereClause?>.Ok(new WhereClause(expr.Value!));
+    }
+
+    #endregion
+    
+    #region order by
+    
+    public static Result<OrderClause?> OrderByClause(ref SelectTokenizer tokenizer)
+    {
+        var peekTokenizer = tokenizer;
+        var peekNext = SelectTokenizer.Read(ref peekTokenizer);
+        if (peekNext.Type != SelectToken.Order) return Result<OrderClause?>.Ok(null);
+        
+        tokenizer = peekTokenizer;
+
+        var next = SelectTokenizer.Read(ref tokenizer);
+        if (next.Type != SelectToken.By) return Result<OrderClause?>.UnexpectedToken(next);
+
+        var columns = new List<(Expression, OrderDirection)>();
+        
+        while (true)
+        {
+            var expr = Expression(ref tokenizer);
+            if (!expr.Success) return Result<OrderClause?>.FromError(expr);
+
+            peekTokenizer = tokenizer;
+            peekNext = SelectTokenizer.Read(ref peekTokenizer);
+
+            var order = OrderDirection.Ascending;
+            switch (peekNext.Type)
+            {
+                case SelectToken.Asc:
+                    tokenizer = peekTokenizer;
+
+                    order = OrderDirection.Ascending;
+                    peekNext = SelectTokenizer.Read(ref peekTokenizer);
+                    break;
+                case SelectToken.Desc:
+                    tokenizer = peekTokenizer;
+
+                    order = OrderDirection.Descending;
+                    peekNext = SelectTokenizer.Read(ref peekTokenizer);
+                    break;
+            }
+            
+            columns.Add((expr.Value!, order));
+
+            if (peekNext.Type == SelectToken.Comma)
+            {
+                tokenizer = peekTokenizer;
+            }
+            else
+            {
+                break;
+            }
+        }
+        
+        return Result<OrderClause?>.Ok(new OrderClause(columns));
+    }
+
+    #endregion
+    
+    #region limit
+    
+    public static Result<LimitClause?> LimitClause(ref SelectTokenizer tokenizer)
+    {
+        var peekTokenizer = tokenizer;
+        var peekNext = SelectTokenizer.Read(ref peekTokenizer);
+        if (peekNext.Type != SelectToken.Limit) return Result<LimitClause?>.Ok(null);
+        
+        tokenizer = peekTokenizer;
+        
+        var next = SelectTokenizer.Read(ref tokenizer);
+        if(next.Type != SelectToken.NumberLiteral) return Result<LimitClause?>.UnexpectedToken(next);
+
+        var limit = ParseNumber(next);
+        
+        return Result<LimitClause?>.Ok(new LimitClause((int)limit));
+    }
+
+    #endregion
+    
+    public static Result<Query> Parse(string query)
+    {
+        var tokenizer = new SelectTokenizer(query.AsSpan());
+        var result = Query(ref tokenizer);
+        if (!result.Success)
+        {
+            return result;
+        }
+
+        var final = SelectTokenizer.Read(ref tokenizer);
+        if (final.Type != SelectToken.Eof)
+        {
+            return Result<Query>.UnexpectedToken(final);
+        }
+
         return result;
     }
-
-    public static readonly TokenListParser<SelectToken, Expression> BracketExpression =
-        from begin in Token.EqualTo(SelectToken.LeftBracket)
-        from expr in Superpower.Parse.Ref(() => Expression)
-        from end in Token.EqualTo(SelectToken.RightBracket)
-        select expr;
-
-    public static readonly TokenListParser<SelectToken, Expression> Term =
-        FunctionExpression
-            .Or(QualifiedIdentifier)
-            .Or(Number.Select(x => (Expression)new Expression.NumberLiteral(x)))
-            .Or(String.Select(x => (Expression)new Expression.StringLiteral(x)))
-            .Or(Boolean.Select(x => (Expression)new Expression.BooleanLiteral(x)))
-            .Or(BracketExpression);
-
-    public static readonly TokenListParser<SelectToken, Expression> Unary =
-        (
-            from op in Token.EqualTo(SelectToken.Negate)
-            from term in Term
-            select (Expression)new Expression.Unary(UnaryOperator.Negate, term)
-        )
-        .Or(Term);
-
-    public static readonly TokenListParser<SelectToken, Expression> Multiplicative =
-        Superpower.Parse.Chain(
-            Token.EqualTo(SelectToken.Star).Or(Token.EqualTo(SelectToken.Divide)).Or(Token.EqualTo(SelectToken.Modulo)),
-            Unary,
-            CreateMultiplicative
-        );
-    private static Expression CreateMultiplicative(Token<SelectToken> opToken, Expression left, Expression right)
-    {
-        var operation = opToken.Kind switch
-        {
-            SelectToken.Star => BinaryOperator.Multiply,
-            SelectToken.Divide => BinaryOperator.Divide,
-            SelectToken.Modulo => BinaryOperator.Modulo,
-                
-            _ => throw new InvalidOperationException("Operation should be a multiplicative token")
-        };
-
-        return new Expression.Binary(operation, left, right);
-    }
-
-    public static readonly TokenListParser<SelectToken, Expression> Additive =
-        Superpower.Parse.Chain(
-            Token.EqualTo(SelectToken.Add).Or(Token.EqualTo(SelectToken.Negate)),
-            Multiplicative,
-            CreateAdditive
-        );
-    private static Expression CreateAdditive(Token<SelectToken> opToken, Expression left, Expression right)
-    {
-        var operation = opToken.Kind switch
-        {
-            SelectToken.Add => BinaryOperator.Add,
-            SelectToken.Negate => BinaryOperator.Subtract,
-                
-            _ => throw new InvalidOperationException("Operation should be a additive token")
-        };
-
-        return new Expression.Binary(operation, left, right);
-    }
-
-    public static readonly TokenListParser<SelectToken, Expression> Membership = ParseOptionalOrDefaultSuffix(
-        Additive,
-        (
-            from @in in Token.EqualTo(SelectToken.In)
-            from begin in Token.EqualTo(SelectToken.LeftBracket)
-            from values in Superpower.Parse.Ref(() => Expression).ManyDelimitedBy(
-                Token.EqualTo(SelectToken.Comma),
-                Token.EqualTo(SelectToken.RightBracket))
-            select values
-        ),
-        (expr, suffix) => new Expression.In(expr, suffix)
-    );
-
-    public static readonly TokenListParser<SelectToken, Expression> IsNull = ParseOptionalSuffix(
-        Membership,
-        (
-            from @is in Token.EqualTo(SelectToken.Is)
-            from not in Token.EqualTo(SelectToken.Not).Optional()
-            from @null in Token.EqualTo(SelectToken.Null)
-            select not.HasValue
-        ),
-        (expr, suffix) => new Expression.IsNull(expr, suffix)
-    );
-
-    public static readonly TokenListParser<SelectToken, Expression> Presence = ParseOptionalSuffix(
-        IsNull,
-        (
-            from @is in Token.EqualTo(SelectToken.Is)
-            from not in Token.EqualTo(SelectToken.Not).Optional()
-            from missing in Token.EqualTo(SelectToken.Missing)
-            select not.HasValue
-        ),
-        (expr, suffix) => new Expression.Presence(expr, !suffix)
-    );
-
-    public static readonly TokenListParser<SelectToken, Expression> Containment = ParseOptionalSuffix(
-        Presence,
-        (
-            from not in Token.EqualTo(SelectToken.Not).Optional()
-            from between in Token.EqualTo(SelectToken.Between)
-            from lower in Presence
-            from and in Token.EqualTo(SelectToken.And)
-            from upper in Superpower.Parse.Ref(() => Expression)
-            select (negate: not.HasValue, lower, upper)
-        ),
-        (expr, suffix) => new Expression.Between(suffix.negate, expr, suffix.lower, suffix.upper)
-    );
-
-    private static readonly TokenListParser<SelectToken, (Expression Pattern, Option<Expression> Escape)> PatternSuffix = ParseOptionalOrDefaultSuffix(
-        (
-            from between in Token.EqualTo(SelectToken.Like)
-            from pattern in Superpower.Parse.Ref(() => Expression)
-            select (pattern, (Option<Expression>)new None())
-        ),
-        (
-            from escape in Token.EqualTo(SelectToken.Escape)
-            from escapeExpression in Superpower.Parse.Ref(() => Expression)
-            select escapeExpression
-        ),
-        (pattern, escape) => (pattern.pattern, escape)
-    );
-
-    public static readonly TokenListParser<SelectToken, Expression> Pattern = ParseOptionalSuffix(
-        Containment,
-        PatternSuffix,
-        (expr, suffix) => new Expression.Like(expr, suffix.Pattern, suffix.Escape)
-    );
     
-    public static readonly TokenListParser<SelectToken, Expression> StringConcatenation =
-        Superpower.Parse.ChainRight(
-            Token.EqualTo(SelectToken.Concat),
-            Pattern,
-            (_, left, right) => new Expression.Binary(BinaryOperator.Concat, left, right)
-        );
-
-
-    public static readonly TokenListParser<SelectToken, Expression> Comparative = ParseOptionalSuffix(
-        StringConcatenation,
-        (
-            from operation in Token.EqualTo(SelectToken.Lesser).Or(Token.EqualTo(SelectToken.Greater)).Or(Token.EqualTo(SelectToken.LesserOrEqual)).Or(Token.EqualTo(SelectToken.GreaterOrEqual))
-            from right in StringConcatenation
-            select (operation, right)
-        ),
-        (expr, suffix) => new Expression.Binary(GetComparativeOperation(suffix.operation), expr, suffix.right)
-    );
-    private static BinaryOperator GetComparativeOperation(Token<SelectToken> operation) => operation.Kind switch
+    public static Result<Query> Query(ref SelectTokenizer tokenizer)
     {
-        SelectToken.Lesser => BinaryOperator.Lesser,
-        SelectToken.Greater => BinaryOperator.Greater,
-        SelectToken.LesserOrEqual => BinaryOperator.LesserOrEqual,
-        SelectToken.GreaterOrEqual => BinaryOperator.GreaterOrEqual,
-            
-        _ => throw new InvalidOperationException("Operation should be a comparative token")
-    };
-
-    public static readonly TokenListParser<SelectToken, Expression> Equality =
-        Superpower.Parse.ChainRight(
-            Token.EqualTo(SelectToken.Equal).Or(Token.EqualTo(SelectToken.NotEqual)),
-            Comparative,
-            CreateEquality
-        );
-    private static Expression CreateEquality(Token<SelectToken> opToken, Expression left, Expression right)
-    {
-        var operation = opToken.Kind switch
-        {
-            SelectToken.Equal => BinaryOperator.Equal,
-            SelectToken.NotEqual => BinaryOperator.NotEqual,
-                
-            _ => throw new InvalidOperationException("Operation should be a equality token")
-        };
-
-        return new Expression.Binary(operation, left, right);
-    }
-
-    public static readonly TokenListParser<SelectToken, Expression> BooleanUnary =
-    (
-        from operation in Token.EqualTo(SelectToken.Not)
-        from expression in Equality
-        select (Expression)new Expression.Unary(UnaryOperator.Not, expression)
-    ).Or(Equality);
-
-    public static readonly TokenListParser<SelectToken, Expression> BooleanAnd =
-        Superpower.Parse.ChainRight(
-            Token.EqualTo(SelectToken.And),
-            BooleanUnary,
-            (_, left, right) => new Expression.Binary(BinaryOperator.And, left, right)
-        );
-
-    public static readonly TokenListParser<SelectToken, Expression> BooleanOr =
-        Superpower.Parse.ChainRight(
-            Token.EqualTo(SelectToken.Or),
-            BooleanAnd,
-            (_, left, right) => new Expression.Binary(BinaryOperator.Or, left, right)
-        );
-    
-    public static readonly TokenListParser<SelectToken, Expression> Expression = BooleanOr;
-
-    // TODO handle brackets
-
-    #endregion
-
-    #region select
-    private static readonly TokenListParser<SelectToken, Column> Column =
-        from expr in Expression
-        from alias in Alias.Select(x => (Option<string>)x).OptionalOrDefault(new None())
-        select new Column(expr, alias);
-    private static readonly TokenListParser<SelectToken, SelectClause> ColumnsStar =
-        Token.EqualTo(SelectToken.Star).Select(_ => (SelectClause)new SelectClause.Star());
-    private static readonly TokenListParser<SelectToken, SelectClause> ColumnsList =
-        Superpower.Parse.Chain(Token.EqualTo(SelectToken.Comma), Column.Select(x => new SelectClause.List(new[] { x })), CombineColumnLists)
-            .Select(x => (SelectClause)x);
-
-    private static SelectClause.List CombineColumnLists(Token<SelectToken> op, SelectClause.List left, SelectClause.List right)
-    {
-        var columns = left.Columns.Concat(right.Columns).ToList();
-        return new SelectClause.List(columns);
-    }
-
-    public static readonly TokenListParser<SelectToken, SelectClause> SelectClause =
-        from @select in Token.EqualTo(SelectToken.Select)
-        from columns in ColumnsStar.Or(ColumnsList)
-        select columns;
-
-    #endregion
-
-    #region from
-    public static readonly TokenListParser<SelectToken, FromClause> FromClause =
-        from @from in Token.EqualTo(SelectToken.From)
-        from tableName in Identifier.Select(x => x.Identifier)
-        from alias in Alias.Select(x => (Option<string>)x).OptionalOrDefault(new None())
-        select new FromClause(tableName, alias);
-    #endregion
-
-    #region where
-    public static readonly TokenListParser<SelectToken, WhereClause> WhereClause =
-        from @where in Token.EqualTo(SelectToken.Where)
-        from expression in Expression
-        select new WhereClause(expression);
-    #endregion
-
-    #region order by
-
-    private static readonly TokenListParser<SelectToken, (Expression Expression, OrderDirection Direction)> OrderByColumn =
-        from column in Expression
-        from direction in Token.EqualTo(SelectToken.Asc).Select(_ => OrderDirection.Ascending)
-            .Or(Token.EqualTo(SelectToken.Desc).Select(_ => OrderDirection.Descending)).OptionalOrDefault(OrderDirection.Ascending)
-        select (column, direction);
-
-    public static readonly TokenListParser<SelectToken, OrderClause> OrderByClause =
-        from orderBy in Token.Sequence(SelectToken.Order, SelectToken.By)
-        from columns in OrderByColumn.ManyDelimitedBy(Token.EqualTo(SelectToken.Comma))
-        select new OrderClause(columns);
-
-    #endregion
-
-    #region limit
-    public static readonly TokenListParser<SelectToken, LimitClause> LimitClause =
-        from limit in Token.EqualTo(SelectToken.Limit)
-        from number in Number.Select(x => (int)x)
-        select new LimitClause(number);
-    #endregion
+        var select = SelectClause(ref tokenizer);
+        if (!select.Success) return Result<Query>.FromError(select);
         
-    public static readonly TokenListParser<SelectToken, Query> Query =
-        from @select in SelectClause
-        from @from in FromClause
-        from @where in WhereClause.Select(x => (Option<WhereClause>)x).OptionalOrDefault(new None())
-        from order in OrderByClause.Select(x => (Option<OrderClause>)x).OptionalOrDefault(new None())
-        from limit in LimitClause.Select(x => (Option<LimitClause>)x).OptionalOrDefault(new None())
-        select new Query(@select, @from, @where, order, limit);
-    
-    [PublicAPI]
-    public static TokenListParserResult<SelectToken, Query> Parse(string input)
-    {
-        var tokenizer = new SelectTokenizer();
-        var tokens = tokenizer.Tokenize(input);
-        return Parse(tokens);
-    }
-    [PublicAPI]
-    public static TokenListParserResult<SelectToken, Query> Parse(TokenList<SelectToken> input) => Query(input);
+        var from = FromClause(ref tokenizer);
+        if (!from.Success) return Result<Query>.FromError(from);
 
-    private static (string Identifier, bool CaseSensitive) ParseIdentifier(Token<SelectToken> token)
-    {
-        var rawValue = token.ToStringValue();
+        var where = WhereClause(ref tokenizer);
+        if (!where.Success) return Result<Query>.FromError(where);
 
-        return rawValue[0] == '\"'
-            ? (rawValue.Substring(1, rawValue.Length - 2), true)
-            : (rawValue, false);
+        var order = OrderByClause(ref tokenizer);
+        if (!order.Success) return Result<Query>.FromError(order);
+
+        var limit = LimitClause(ref tokenizer);
+        if (!limit.Success) return Result<Query>.FromError(limit);
+
+        var final = SelectTokenizer.Read(ref tokenizer);
+        if(final.Type != SelectToken.Eof) return Result<Query>.UnexpectedToken(final);
+        
+        var query = new Query(select.Value!, from.Value!, where.Value ?? new Option<WhereClause>(), order.Value ?? new Option<OrderClause>(), limit.Value ?? new Option<LimitClause>());
+        
+        return Result<Query>.Ok(query);
     }
 
-    private static string ParseString(Token<SelectToken> token)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static decimal ParseNumber(SelectTokenizer.Token next)
     {
-        var rawValue = token.ToStringValue();
+#if NETSTANDARD
+        return decimal.Parse(next.ToStringValue());
+#else
+        return decimal.Parse(next.Span);
+#endif
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static string ParseString(SelectTokenizer.Token token)
+    {
         // TODO handle escapes
-        return rawValue.Substring(1, rawValue.Length - 2);
+#if NETSTANDARD
+        return new string(token.Span.Slice(1, token.Span.Length - 2).ToArray());
+#else
+        return new string(token.Span[1..^1]);
+#endif
     }
-
-    private static TokenListParser<SelectToken, T1> ParseOptionalSuffix<T1, T2>(TokenListParser<SelectToken, T1> expressionParser, TokenListParser<SelectToken, T2> suffixParser, Func<T1, T2, T1> selector) where T2 : struct =>
-        from expression in expressionParser
-        from suffix in suffixParser.Try().Optional()
-        select suffix.HasValue ? selector(expression, suffix.Value) : expression;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool ParseBoolean(SelectTokenizer.Token next)
+    {
+#if NETSTANDARD
+        return bool.Parse(next.ToStringValue());
+#else
+        return bool.Parse(next.Span);
+#endif
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Expression.Identifier ParseIdentifier(SelectTokenizer.Token token)
+    {
+#if NETSTANDARD
+        return token.Span[0] == '"' 
+            ? new Expression.Identifier(new string(token.Span.Slice(1, token.Span.Length - 2).ToArray()), true)
+            : new Expression.Identifier(new string(token.Span.ToArray()), false);
+#else
+        return token.Span[0] == '"' 
+            ? new Expression.Identifier(new string(token.Span[1..^1]), true)
+            : new Expression.Identifier(new string(token.Span), false);
+#endif
+    }
     
-    private static TokenListParser<SelectToken, T1> ParseOptionalOrDefaultSuffix<T1, T2>(TokenListParser<SelectToken, T1> expressionParser, TokenListParser<SelectToken, T2> suffixParser, Func<T1, T2, T1> selector) where T2 : class =>
-        from expression in expressionParser
-        from suffix in suffixParser.Try().OptionalOrDefault()
-        select suffix != default ? selector(expression, suffix) : expression;
+    public readonly struct Result<T>
+    {
+        public bool Success { get; }
+        
+        public T? Value { get; }
+        public string? Error { get; }
 
+        private Result(bool success, T? value, string? error)
+        {
+            Success = success;
+            Value = value;
+            Error = error;
+        }
+
+        public static Result<T> Ok(T value) => new(true, value, null);
+        public static Result<T> UnexpectedToken(SelectTokenizer.Token token) => new(false, default, $"Unexpected token '{token.Type}'");
+
+        public static Result<T> FromError<TOther>(Result<TOther> other)
+        {
+            if (other.Success) throw new InvalidOperationException();
+
+            return new Result<T>(false, default, other.Error);
+        }
+    }
 }
