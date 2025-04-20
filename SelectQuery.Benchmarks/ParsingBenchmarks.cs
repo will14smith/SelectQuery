@@ -4,7 +4,7 @@ using SelectParser.Queries;
 
 namespace SelectQuery.Benchmarks;
 
-[ShortRunJob]
+[SimpleJob]
 [MemoryDiagnoser]
 public class ParsingBenchmarks
 {

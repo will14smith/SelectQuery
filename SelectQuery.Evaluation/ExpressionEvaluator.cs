@@ -76,9 +76,20 @@ public class ExpressionEvaluator
 
     private Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
     {
-        var target = EvaluateIdentifier<object>(qualified.Qualification, obj);
+        for (var index = 0; index < qualified.Identifiers.Count; index++)
+        {
+            var identifier = qualified.Identifiers[index];
+            
+            var context = EvaluateIdentifier<object>(identifier, obj);
+            if (context.IsNone)
+            {
+                return new None();
+            }
 
-        return target.SelectMany(obj => Evaluate<T>(qualified.Expression, obj));
+            obj = context.AsT0;
+        }
+        
+        return (T) obj;
     }
     
     private Option<T> EvaluateFunction<T>(Function function, object obj)

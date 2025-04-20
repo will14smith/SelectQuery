@@ -64,24 +64,12 @@ public class JsonRecordWriter(FromClause from, SelectClause select)
         return GetColumnName(index, expression);
     }
 
-    private static string GetColumnName(int index, Expression expression)
-    {
-        while (true)
+    private static string GetColumnName(int index, Expression expression) =>
+        expression switch
         {
-            if (expression is Expression.Identifier identifier)
-            {
-                // use the identifier name
-                return identifier.Name;
-            }
-
-            if (expression is not Expression.Qualified qualified)
-            {
-                // default is _N for the Nth column (1 indexed)
-                return $"_{index + 1}";
-            }
-
-            // recurse down qualified expressions
-            expression = qualified.Expression;
-        }
-    }
+            Expression.Identifier identifier => identifier.Name,
+            Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name,
+            // default is _N for the Nth column (1 indexed)
+            _ => $"_{index + 1}"
+        };
 }

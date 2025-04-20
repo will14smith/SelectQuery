@@ -45,15 +45,13 @@ public class QueryValidator
         }
     }
     
-    private static bool IsQualifiedStar(Expression expr)
-    {
-        while (true)
+    private static bool IsQualifiedStar(Expression expr) =>
+        expr switch
         {
-            if (expr is Expression.Identifier identifier) return identifier.Name == "*";
-            if (expr is not Expression.Qualified qualified) return false;
-            expr = qualified.Expression;
-        }
-    }
+            Expression.Identifier identifier => identifier.Name == "*",
+            Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name == "*",
+            _ => false,
+        };
 
     internal static bool IsAggregateQuery(Query query) =>
         query.Select switch

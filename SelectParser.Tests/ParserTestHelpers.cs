@@ -47,9 +47,13 @@ public static class ParserTestHelpers
         Assert.True(option.IsNone);
     }
 
-    public static void AssertIdentifier(string expected, Expression expression)
+    public static void AssertIdentifier(string expected, Expression expression, bool? caseSensitive = null)
     {
         var identifier = Assert.IsType<Expression.Identifier>(expression);
         Assert.Equal(expected, identifier.Name);
+        if (caseSensitive.HasValue)
+        {
+            Assert.Equal(caseSensitive.Value, identifier.CaseSensitive);
+        }
     }
 }

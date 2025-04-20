@@ -61,17 +61,16 @@ public abstract class Expression : IEquatable<Expression>
         // TODO handle quoting
         public override string ToString() => Name;
     }
-    public class Qualified(Identifier qualification, Expression expression) : Expression, IEquatable<Qualified>
+    public class Qualified(IReadOnlyList<Identifier> identifiers) : Expression, IEquatable<Qualified>
     {
-        public Identifier Qualification { get; } = qualification;
-        public Expression Expression { get; } = expression;
+        public IReadOnlyList<Identifier> Identifiers { get; } = identifiers;
 
         public override bool Equals(Expression? other) => Equals(other as Qualified);
-        public bool Equals(Qualified? other) => other is not null && Equals(Qualification, other.Qualification) && Equals(Expression, other.Expression);
+        public bool Equals(Qualified? other) => other is not null && Identifiers.SequenceEqual(other.Identifiers);
         public override bool Equals(object? obj) => ReferenceEquals(this, obj) || obj is Qualified other && Equals(other);
-        public override int GetHashCode() => unchecked((Qualification.GetHashCode() * 397) ^ Expression.GetHashCode());
+        public override int GetHashCode() => Identifiers.Aggregate(0, (a, x) => a ^ x.GetHashCode());
 
-        public override string ToString() => $"{Qualification}.{Expression}";
+        public override string ToString() => string.Join(".", Identifiers);
     }
 
     public class FunctionExpression(Function function) : Expression, IEquatable<FunctionExpression>

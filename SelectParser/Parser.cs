@@ -515,14 +515,13 @@ public class Parser
             
             tokenizer = peekTokenizer;
         }
-        
-        Expression result = identifiers[identifiers.Count - 1];
-        for (var i = identifiers.Count - 2; i >= 0; i--)
+
+        return identifiers.Count switch
         {
-            result = new Expression.Qualified(identifiers[i], result);
-        }
-        
-        return Result<Expression>.Ok(result);
+            0 => throw new InvalidOperationException("Cannot build a qualified expression from no identifiers"),
+            1 => Result<Expression>.Ok(identifiers[0]),
+            _ => Result<Expression>.Ok(new Expression.Qualified(identifiers))
+        };
     }
 
     #endregion
