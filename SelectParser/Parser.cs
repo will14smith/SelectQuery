@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using OneOf.Types;
 using SelectParser.Queries;
 
 namespace SelectParser;
@@ -450,7 +449,7 @@ public class Parser
             }
             
             case SelectToken.Avg: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Average(x));
-            case SelectToken.Count: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Count(x.IsT3 && x.AsT3 is { Name: "*" } ? new None() : x));
+            case SelectToken.Count: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Count(x is Expression.Identifier { Name: "*" } ? new None() : x));
             case SelectToken.Max: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Max(x));
             case SelectToken.Min: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Min(x));
             case SelectToken.Sum: return SingleParameterFunction(ref tokenizer, x => new AggregateFunction.Sum(x));
@@ -541,7 +540,7 @@ public class Parser
         if (peekNext.Type == SelectToken.Star)
         {
             tokenizer = peekTokenizer;
-            return Result<SelectClause>.Ok(new SelectClause(new SelectClause.Star()));
+            return Result<SelectClause>.Ok(new SelectClause.Star());
         }
 
         var columns = new List<Column>();
@@ -566,7 +565,7 @@ public class Parser
             tokenizer = peekTokenizer;
         }
 
-        return Result<SelectClause>.Ok(new SelectClause(new SelectClause.List(columns)));
+        return Result<SelectClause>.Ok(new SelectClause.List(columns));
     }
 
     private static Result<Option<string>> Alias(ref SelectTokenizer tokenizer)

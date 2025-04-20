@@ -1,6 +1,4 @@
-﻿using OneOf.Types;
-
-namespace SelectParser.Queries;
+﻿namespace SelectParser.Queries;
 
 public class Column
 {

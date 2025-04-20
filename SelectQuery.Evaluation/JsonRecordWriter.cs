@@ -1,35 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using SelectParser.Queries;
 using Utf8Json;
 using Utf8Json.Resolvers;
 
 namespace SelectQuery.Evaluation;
 
-public class JsonRecordWriter
+public class JsonRecordWriter(FromClause from, SelectClause select)
 {
     private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
-
-    private readonly FromClause _from;
-    private readonly SelectClause _select;
-
-    public JsonRecordWriter(FromClause from, SelectClause select)
-    {
-        _from = from;
-        _select = select;
-    }
+    private static readonly ExpressionEvaluator ExpressionEvaluator = new();
 
     public void Write(ref JsonWriter writer, object obj)
     {
-        if (_select.IsT0)
+        if (select is not SelectClause.List list)
         {
             WriteStar(ref writer, obj);
         }
         else
         {
             writer.WriteBeginObject();
-            WriteColumns(ref writer, _select.AsT1.Columns, obj);
+            WriteColumns(ref writer, list.Columns, obj);
             writer.WriteEndObject();
         }
     }
@@ -46,7 +36,7 @@ public class JsonRecordWriter
         {
             var column = columns[index];
 
-            var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, _from, obj);
+            var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, from, obj);
             if (!result.IsSome)
             {
                 continue;
@@ -78,20 +68,20 @@ public class JsonRecordWriter
     {
         while (true)
         {
-            if (expression.IsT3)
+            if (expression is Expression.Identifier identifier)
             {
                 // use the identifier name
-                return expression.AsT3.Name;
+                return identifier.Name;
             }
 
-            if (!expression.IsT4)
+            if (expression is not Expression.Qualified qualified)
             {
                 // default is _N for the Nth column (1 indexed)
                 return $"_{index + 1}";
             }
 
             // recurse down qualified expressions
-            expression = expression.AsT4.Expression;
+            expression = qualified.Expression;
         }
     }
 }

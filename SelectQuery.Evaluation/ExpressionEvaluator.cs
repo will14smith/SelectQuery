@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using OneOf.Types;
 using SelectParser;
 using SelectParser.Queries;
 
@@ -11,21 +10,24 @@ public class ExpressionEvaluator
 {
     public Option<T> Evaluate<T>(Expression expression, object obj)
     {
-        var value = expression.Match(
-            strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
-            numLiteral => (T)(object)EvaluateNumberLiteral(numLiteral),
-            boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
-            identifier => EvaluateIdentifier<T>(identifier, obj),
-            qualified => EvaluateQualified<T>(qualified, obj),
-            function => EvaluateFunction<T>(function.Function, obj),
-            unary => EvaluateUnary<T>(unary, obj),
-            binary => EvaluateBinary<T>(binary, obj),
-            between => (T)(object)EvaluateBetween(between, obj),
-            isNull => (T)(object)EvaluateIsNull(isNull, obj),
-            presence => (T)(object)EvaluatePresence(presence, obj),
-            inExpr => (T)(object)EvaluateIn(inExpr, obj),
-            like => (T)(object)EvaluateLike(like, obj)
-        );
+        var value = expression switch
+        {
+            Expression.StringLiteral strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
+            Expression.NumberLiteral numLiteral => (T)(object)EvaluateNumberLiteral(numLiteral),
+            Expression.BooleanLiteral boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
+            Expression.Identifier identifier => EvaluateIdentifier<T>(identifier, obj),
+            Expression.Qualified qualified => EvaluateQualified<T>(qualified, obj),
+            Expression.FunctionExpression function => EvaluateFunction<T>(function.Function, obj),
+            Expression.Unary unary => EvaluateUnary<T>(unary, obj),
+            Expression.Binary binary => EvaluateBinary<T>(binary, obj),
+            Expression.Between between => (T)(object)EvaluateBetween(between, obj),
+            Expression.IsNull isNull => (T)(object)EvaluateIsNull(isNull, obj),
+            Expression.Presence presence => (T)(object)EvaluatePresence(presence, obj),
+            Expression.In inExpr => (T)(object)EvaluateIn(inExpr, obj),
+            Expression.Like like => (T)(object)EvaluateLike(like, obj),
+
+            _ => throw new ArgumentOutOfRangeException(),
+        };
 
         // normalize result values, utf8json parses numbers are decimal but we want doubles
         if (value.Value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
@@ -64,9 +66,9 @@ public class ExpressionEvaluator
                 return new None();
             }
 
-            // slow: try match case-insensitive key, ideally the dictionary would be case insensitive but need some custom deserialization logic to support that
+            // slow: try match case-insensitive key, ideally the dictionary would be case-insensitive but need some custom deserialization logic to support that
             var entry = dict.FirstOrDefault(x => string.Equals(x.Key, identifier.Name, StringComparison.OrdinalIgnoreCase));
-            return entry.Key != null ? (Option<T>) (T) entry.Value : new None();
+            return entry.Key != null ? (T) entry.Value : new None();
         }
 
         throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
@@ -81,13 +83,11 @@ public class ExpressionEvaluator
     
     private Option<T> EvaluateFunction<T>(Function function, object obj)
     {
-        if (!function.IsT1)
+        if (function is not ScalarFunction scalar)
         {
             throw new InvalidOperationException("cannot evaluate a non-scalar function in this way");
         }
         
-        var scalar = function.AsT1;
-
         var name = scalar.Identifier.Name;
         var arguments = scalar.Arguments.Select(argument => Evaluate<object>(argument, obj)).ToList();
 
@@ -171,7 +171,7 @@ public class ExpressionEvaluator
     {
         var value = Evaluate<object>(isNull.Expression, obj);
 
-        var hasValue = value.IsSome && value.AsT0 is not null;
+        var hasValue = value is { IsSome: true, AsT0: not null };
 
         return hasValue == isNull.Negate;
     }
