@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using SelectParser.Queries;
+using SimdJsonDotNet.Memory;
 using SimdJsonDotNet.Model;
 
 namespace SelectQuery.Evaluation;
@@ -42,38 +44,81 @@ internal abstract class JsonRecordWriter : IDisposable
         }
     }
 
-    private class ListWriter(Query query, SelectClause.List list) : JsonRecordWriter
+    private class ListWriter : JsonRecordWriter
     {
+        private readonly string _tableAlias;
+        
+        private readonly List<ColumnMetadata> _list;
+        private readonly PooledList<byte> _metadataBuffer;
+
+        public ListWriter(Query query, SelectClause.List list)
+        {
+            _tableAlias = query.From.Alias.Match(alias => alias, _ => "s3object");
+            (_metadataBuffer, _list) = BuildBuffer(list);
+        }
+        
         public override void EvaluateSelect(DocumentReference record)
         {
             _stream.WriteByte((byte) '{');
 
-            for (var index = 0; index < list.Columns.Count; index++)
+            var metadataBuffer = _metadataBuffer.AsSpan();
+            
+            foreach (var column in _list)
             {
-                var column = list.Columns[index];
-                
-                // TODO pre-calculate all this
-                if (index > 0)
-                {
-                    _stream.Write(",\""u8);
-                }
-                else
-                {
-                    _stream.WriteByte((byte)'"');
-                }
-                var name = GetColumnName(index, column);
-                // TODO escape if needed
-                _stream.Write(Encoding.UTF8.GetBytes(name));
-                _stream.Write("\":"u8);
+                column.WriteStart(metadataBuffer, _stream);
                 
                 // TODO pre-calculate any constant operations
-                var tableAlias = query.From.Alias.Match(alias => alias, _ => "s3object");
-
-                var value = ValueEvaluator.Evaluate(record, column.Expression, tableAlias);
+                var value = ValueEvaluator.Evaluate(record, column.Expression, _tableAlias);
                 value.Write(_stream);
             }
 
             _stream.Write("}\n"u8);
+        }
+
+        private static (PooledList<byte>, List<ColumnMetadata>) BuildBuffer(SelectClause.List list)
+        {
+            var buffer = new PooledList<byte>();
+            var metadata = new List<ColumnMetadata>();
+
+            for (var index = 0; index < list.Columns.Count; index++)
+            {
+                var column = list.Columns[index];
+                var name = GetColumnName(index, column);
+
+                var start = buffer.Length;
+                
+                if (index > 0)
+                {
+                    buffer.AddRange(",\""u8);
+                }
+                else
+                {
+                    buffer.Add((byte)'"');
+                }
+
+                // TODO escape if needed
+                buffer.AddRange(Encoding.UTF8.GetBytes(name));
+                buffer.AddRange("\":"u8);
+                
+                var startBufferRange = new Range(start, buffer.Length);
+                var metadataEntry = new ColumnMetadata(column.Expression, startBufferRange);
+                metadata.Add(metadataEntry);
+            }
+            
+            return (buffer, metadata);
+        }
+        
+        public override void Dispose()
+        {
+            base.Dispose();
+            _metadataBuffer.Dispose();
+        }
+        
+        private readonly struct ColumnMetadata(Expression expression, Range startBufferRange)
+        {
+            public Expression Expression { get; } = expression;
+
+            public void WriteStart(ReadOnlySpan<byte> buffer, MemoryStream stream) => stream.Write(buffer[startBufferRange]);
         }
     }
     
