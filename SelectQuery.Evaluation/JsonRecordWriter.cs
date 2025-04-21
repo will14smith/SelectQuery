@@ -67,7 +67,10 @@ internal abstract class JsonRecordWriter : IDisposable
                 _stream.Write("\":"u8);
                 
                 // TODO pre-calculate any constant operations
-                var value = ValueEvaluator.Evaluate(record, column.Expression);
+                var tableAlias = query.From.Alias.Match(alias => alias, _ => "s3object");
+
+                record.Rewind();
+                var value = ValueEvaluator.Evaluate(record, column.Expression, tableAlias);
                 value.Write(_stream);
             }
 
