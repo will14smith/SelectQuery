@@ -9,7 +9,7 @@ using SimdJsonDotNet.Model;
 
 namespace SelectQuery.Evaluation;
 
-public static class ValueEvaluator
+internal static class ValueEvaluator
 {
     public static Result Evaluate(DocumentReference document, Expression expression, string tableAlias)
     {
@@ -20,6 +20,7 @@ public static class ValueEvaluator
             Expression.BooleanLiteral boolLiteral => EvaluateBooleanLiteral(boolLiteral),
 
             Expression.Qualified qualified => EvaluateQualified(document, qualified, tableAlias),
+            Expression.Binary binary => EvaluateBinary(document, binary, tableAlias),
             
             _ => throw new ArgumentOutOfRangeException(nameof(expression), $"unexpected expression type: {expression.GetType().FullName}"),
         };
@@ -47,7 +48,7 @@ public static class ValueEvaluator
         var value = obj[qualified.Identifiers[^1].Name];
         return Result.NewValue(value);
     }
-
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool AreIdentifiersEqual(Expression.Identifier identifier, string match)
     {
@@ -58,9 +59,74 @@ public static class ValueEvaluator
 
         return string.Equals(identifier.Name, match, StringComparison.OrdinalIgnoreCase);
     }
+    
+    private static Result EvaluateBinary(DocumentReference document, Expression.Binary binary, string tableAlias)
+    {
+        var left = Evaluate(document, binary.Left, tableAlias);
+        var right = Evaluate(document, binary.Right, tableAlias);
+
+        if (binary.Operator == BinaryOperator.Equal)
+        {
+            return Result.NewLiteral(EvaluateEquality(left, right));
+        }
+        
+        throw new NotImplementedException();
+    }
+
+    private static bool EvaluateEquality(Result left, Result right)
+    {
+        if (left.Type == right.Type)
+        {
+            throw new NotImplementedException($"compare same types: {left.Type}");
+        }
+        
+        if (right.Type == ResultType.Value)
+        {
+            // move the json value to the left side
+            var temp = right;
+            right = left;
+            left = temp;
+        }
+
+        if (left.Type != ResultType.Value)
+        {
+            // types are different but neither is a json value so don't try to compare
+            return false;
+        }
+        
+        var leftValue = left.AsValue();
+        
+        switch (right.Type)
+        {
+            case ResultType.None: throw new InvalidOperationException("cannot compare to none");
+            
+            case ResultType.StringLiteral:
+                if (leftValue.Type != JsonType.String)
+                {
+                    return false;
+                }
+                
+                // TODO could probably avoid the allocation
+                return leftValue.GetString() == right.AsString();
+                
+            case ResultType.NumberLiteral: 
+                if (leftValue.Type != JsonType.Number)
+                {
+                    return false;
+                }
+                
+                return leftValue.GetDecimal() == right.AsNumber();
+            
+            case ResultType.BooleanLiteral: 
+                throw new NotImplementedException();
+            
+            case ResultType.Value: throw new InvalidOperationException("should never get here");
+            default: throw new NotSupportedException($"cannot compare json value to {right.Type}");
+        }
+    }
 
     [StructLayout(LayoutKind.Explicit)]
-    public ref struct Result
+    internal ref struct Result
     {
         [FieldOffset(0)] private ResultType _type;
 
@@ -76,6 +142,44 @@ public static class ValueEvaluator
         public static Result NewLiteral(bool booleanValue) => new() { _type = ResultType.BooleanLiteral, _booleanLiteral = booleanValue };
         
         public static Result NewValue(Value value) => new() { _type = ResultType.Value, _value = value };
+
+        public ResultType Type => _type;
+        public string AsString()
+        {
+            if (_type != ResultType.StringLiteral)
+            {
+                throw new InvalidOperationException($"cannot convert {_type} to boolean");
+            }
+
+            return _stringLiteral;
+        }
+        public decimal AsNumber()
+        {
+            if (_type != ResultType.NumberLiteral)
+            {
+                throw new InvalidOperationException($"cannot convert {_type} to boolean");
+            }
+
+            return _numberLiteral;
+        }
+        public bool AsBoolean()
+        {
+            if (_type != ResultType.BooleanLiteral)
+            {
+                throw new InvalidOperationException($"cannot convert {_type} to boolean");
+            }
+
+            return _booleanLiteral;
+        }
+        public Value AsValue()
+        {
+            if (_type != ResultType.Value)
+            {
+                throw new InvalidOperationException($"cannot convert {_type} to json value");
+            }
+
+            return _value;
+        }
         
         public void Write(Stream writer)
         {
@@ -117,7 +221,7 @@ public static class ValueEvaluator
         private void WriteValue(Stream writer) => writer.Write(_value.GetRawJson());
     }
     
-    private enum ResultType
+    internal enum ResultType
     {
         None = 0,
         

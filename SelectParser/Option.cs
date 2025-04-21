@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 
 namespace SelectParser;
 
@@ -15,7 +16,10 @@ public readonly struct Option<T> : IEquatable<Option<T>>
         HasValue = false;
         Value = default;
     }
-
+    
+#if !NETSTANDARD
+    [MemberNotNullWhen(true, nameof(Value))]
+#endif
     public bool HasValue { get; }
     public T? Value { get; }
     public T AsT0 => HasValue ? Value! : throw new InvalidOperationException();

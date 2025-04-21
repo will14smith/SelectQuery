@@ -55,7 +55,7 @@ public class EvaluationBenchmarks
     public class TestCase(string name, string queryString)
     {
         public string Name { get; } = name;
-        public Query Query { get; } = Parser.Parse(queryString).Value;
+        public Query Query { get; } = Parser.Parse(queryString).Value!;
 
         public override string ToString() => Name;
     }   
