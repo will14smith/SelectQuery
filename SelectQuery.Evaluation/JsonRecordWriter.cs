@@ -65,10 +65,14 @@ internal abstract class JsonRecordWriter : IDisposable
             
             foreach (var column in _list)
             {
-                column.WriteStart(metadataBuffer, _stream);
-                
                 // TODO pre-calculate any constant operations
                 var value = ValueEvaluator.Evaluate(record, column.Expression, _tableAlias);
+                if (value.Type is ValueEvaluator.ResultType.None)
+                {
+                    continue;
+                }
+                
+                column.WriteStart(metadataBuffer, _stream);
                 value.Write(_stream);
             }
 

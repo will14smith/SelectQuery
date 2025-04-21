@@ -39,17 +39,20 @@ internal static class ValueEvaluator
             throw new InvalidOperationException("attempting to lookup data from a different table");
         }
 
-        //document.Rewind();
         var obj = document.StartOrResumeObject(); 
         
         for (var i = 1; i < qualified.Identifiers.Count - 1; i++)
         {
             // TODO handle case sensitivity
-            obj = obj[qualified.Identifiers[i].Name].GetObject(); 
+            if(!obj.TryFindFieldUnordered(qualified.Identifiers[i].Name, out var next))
+            {
+                return Result.Missing();
+            }
+            
+            obj = next.GetObject(); 
         }
         
-        var value = obj[qualified.Identifiers[^1].Name];
-        return Result.NewValue(value);
+        return obj.TryFindFieldUnordered(qualified.Identifiers[^1].Name, out var value) ? Result.NewValue(value) : Result.Missing();
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -236,6 +239,8 @@ internal static class ValueEvaluator
 
         [FieldOffset(32)] private Value _value;
         
+        public static Result Missing() => new() { _type = ResultType.None };
+
         public static Result NewLiteral(string stringValue) => new() { _type = ResultType.StringLiteral, _stringLiteral = stringValue };
         public static Result NewLiteral(decimal numberValue) => new() { _type = ResultType.NumberLiteral, _numberLiteral = numberValue };
         public static Result NewLiteral(bool booleanValue) => new() { _type = ResultType.BooleanLiteral, _booleanLiteral = booleanValue };
