@@ -217,7 +217,7 @@ public abstract class Expression : IEquatable<Expression>
         /// <summary>
         /// if all matches are static strings, this set can be used for faster lookups
         /// </summary>
-        public IReadOnlyCollection<string>? StringMatches { get; } 
+        public ISet<string>? StringMatches { get; } 
         
         public override bool Equals(Expression? other) => Equals(other as In);
         public bool Equals(In? other) => other is not null && Equals(Expression, other.Expression) && Matches.SequenceEqual(other.Matches);

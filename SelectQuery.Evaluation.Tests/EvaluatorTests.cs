@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using SelectParser;
 using SelectParser.Queries;
 using Xunit;
@@ -11,8 +9,8 @@ namespace SelectQuery.Evaluation.Tests;
 
 public class EvaluatorTests
 {
-    const string ProjectionRecord = @"{""a"":1,""b"":2,""c"":[1,2,3],""d"":{""d1"":""d1"",""d2"":{""d2.2"":true},""d3"":3}}";
-
+    const string ProjectionRecord = @"{""a"":1,""b"":2,""c"":3,""d"":{""d1"":""d1"",""d2"":{""d2.2"":true},""d3"":[1,2,3]}}";
+    
     [Theory]
 
     [InlineData("SELECT 1 FROM s3object", @"{""_1"":1}")]
@@ -36,7 +34,7 @@ public class EvaluatorTests
     [InlineData("SELECT s.A FROM s3object s", @"{""A"":1}")]
     [InlineData("SELECT s.x.a FROM s3object s", @"{}")]
     [InlineData("SELECT s.a as b FROM s3object s", @"{""b"":1}")]
-    [InlineData("SELECT s.a, s.c FROM s3object s", @"{""a"":1,""c"":[1,2,3]}")]
+    [InlineData("SELECT s.a, s.d.d3 FROM s3object s", @"{""a"":1,""d3"":[1,2,3]}")]
     [InlineData("SELECT s.a as b, s.b as a FROM s3object s", @"{""b"":1,""a"":2}")]
     [InlineData(@"SELECT s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"{""d1"":""d1"",""d2.2"":true}")]
     public void ProjectionQueries(string queryString, string expectedRecord)
@@ -56,14 +54,16 @@ public class EvaluatorTests
     [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1", new [] { @"{""a"":1}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a = 2", new [] { @"{""a"":1}" }, 0)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 1)]
+    [InlineData("SELECT 1 FROM s3object s WHERE s.a.a = s.b", new [] { @"{""a"":{""a"":1},""b"":1}", @"{""a"":{""a"":1},""b"":2}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1 and s.a < 3", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 1)]
+    [InlineData("SELECT * FROM s3Object s WHERE s.a = 1 AND s.b = true AND s.c = 'def'", new [] { @"{""a"":1,""b"":true,""c"":""def""}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a = 1 or s.a >= 3", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 2)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a in (1, 2)", new [] { @"{""a"":1}", @"{""a"":2}", @"{""a"":3}" }, 2)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NULL", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":null}" }, 2)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NOT NULL", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":null}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS MISSING", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":3}" }, 1)]
     [InlineData("SELECT 1 FROM s3object s WHERE s.a IS NOT MISSING", new [] { @"{""a"":1}", @"{""b"":2}", @"{""a"":3}" }, 2)]
-    [InlineData("SELECT 1 FROM s3object s WHERE s.a = s.b||'x'", new [] { @"{""a"":""ax"", ""b"":""a""}", @"{""a"":""a"",""b"":""a""}", @"{""a"":""a""}" }, 1)]
+    [InlineData("SELECT 1 FROM s3object s WHERE s.a = s.b||'x'", new [] { @"{""a"":""ax"", ""b"":""a""}", @"{""a"":""a"",""b"":""a""}", @"{""a"":""a""}" }, 1)] 
     public void WhereQueries(string queryString, string[] records, int expectedCount)
     {
         var query = ParseQuery(queryString);

@@ -53,7 +53,7 @@ public class JsonLinesEvaluator
                 {
                     continue;
                 }
-
+                
                 writer.EvaluateSelect(record);
                 state.Count++;
             }

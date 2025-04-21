@@ -22,6 +22,8 @@ internal static class ValueEvaluator
             Expression.Qualified qualified => EvaluateQualified(document, qualified, tableAlias),
             Expression.Binary binary => EvaluateBinary(document, binary, tableAlias),
             
+            Expression.In inExpr => EvaluateIn(document, inExpr, tableAlias),
+            
             _ => throw new ArgumentOutOfRangeException(nameof(expression), $"unexpected expression type: {expression.GetType().FullName}"),
         };
     }
@@ -37,7 +39,8 @@ internal static class ValueEvaluator
             throw new InvalidOperationException("attempting to lookup data from a different table");
         }
 
-        var obj = document.GetObject(); 
+        //document.Rewind();
+        var obj = document.StartOrResumeObject(); 
         
         for (var i = 1; i < qualified.Identifiers.Count - 1; i++)
         {
@@ -63,21 +66,47 @@ internal static class ValueEvaluator
     private static Result EvaluateBinary(DocumentReference document, Expression.Binary binary, string tableAlias)
     {
         var left = Evaluate(document, binary.Left, tableAlias);
+
+        // check for short circuit
+        if (binary.Operator is BinaryOperator.And or BinaryOperator.Or)
+        {
+            var leftValue = left.AsBoolean();
+            if (binary.Operator == BinaryOperator.And)
+            {
+                if (!leftValue)
+                {
+                    return Result.NewLiteral(false);
+                }
+            }
+            else if (leftValue)
+            {
+                return Result.NewLiteral(true);
+            }
+        }
+
         var right = Evaluate(document, binary.Right, tableAlias);
 
-        if (binary.Operator == BinaryOperator.Equal)
+        return binary.Operator switch
         {
-            return Result.NewLiteral(EvaluateEquality(left, right));
-        }
-        
-        throw new NotImplementedException();
+            BinaryOperator.Lesser => Result.NewLiteral(left.AsNumber() < right.AsNumber()),
+            BinaryOperator.Greater => Result.NewLiteral(left.AsNumber() > right.AsNumber()),
+            BinaryOperator.LesserOrEqual => Result.NewLiteral(left.AsNumber() <= right.AsNumber()),
+            BinaryOperator.GreaterOrEqual => Result.NewLiteral(left.AsNumber() >= right.AsNumber()),
+            
+            BinaryOperator.Equal => Result.NewLiteral(EvaluateEquality(left, right)),
+            BinaryOperator.NotEqual => Result.NewLiteral(!EvaluateEquality(left, right)),
+            
+            // we've already checked the left, so just need to look at the right
+            BinaryOperator.And or BinaryOperator.Or => Result.NewLiteral(right.AsBoolean()),
+            _ => throw new NotImplementedException($"operator not implemented: {binary.Operator}")
+        };
     }
 
     private static bool EvaluateEquality(Result left, Result right)
     {
         if (left.Type == right.Type)
         {
-            throw new NotImplementedException($"compare same types: {left.Type}");
+            return EvaluateEqualitySameType(left, right);
         }
         
         if (right.Type == ResultType.Value)
@@ -118,11 +147,81 @@ internal static class ValueEvaluator
                 return leftValue.GetDecimal() == right.AsNumber();
             
             case ResultType.BooleanLiteral: 
-                throw new NotImplementedException();
+                if (leftValue.Type != JsonType.Boolean)
+                {
+                    return false;
+                }
+                
+                return leftValue.GetBool() == right.AsBoolean();
             
             case ResultType.Value: throw new InvalidOperationException("should never get here");
             default: throw new NotSupportedException($"cannot compare json value to {right.Type}");
         }
+    }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static bool EvaluateEqualitySameType(Result left, Result right)
+    {
+        if (left.Type == ResultType.StringLiteral)
+        {
+            return left.AsString() == right.AsString();
+        }
+        if (left.Type == ResultType.NumberLiteral)
+        {
+            return left.AsNumber() == right.AsNumber();
+        }
+        if (left.Type == ResultType.BooleanLiteral)
+        {
+            return left.AsBoolean() == right.AsBoolean();
+        }
+        
+        if (left.Type != ResultType.Value)
+        {
+            throw new NotImplementedException($"comparing {left.Type}");
+        }
+        
+        var leftValue = left.AsValue();
+        var rightValue = right.AsValue();
+        
+        if (leftValue.Type != rightValue.Type)
+        {
+            return false;
+        }
+        
+        return leftValue.Type switch
+        {
+            JsonType.String => leftValue.GetString() == rightValue.GetString(),
+            JsonType.Number => leftValue.GetDecimal() == rightValue.GetDecimal(),
+            JsonType.Boolean => leftValue.GetBool() == rightValue.GetBool(),
+            
+            _ => throw new NotSupportedException($"cannot compare json values of type {leftValue.Type}"),
+        };
+    }
+
+    private static Result EvaluateIn(DocumentReference document, Expression.In expr, string tableAlias)
+    {
+        var value = Evaluate(document, expr.Expression, tableAlias);
+        
+        if (expr.StringMatches is not null)
+        {
+            if (!value.IsString())
+            {
+                return Result.NewLiteral(false);
+            }
+
+            var hasMatch = expr.StringMatches.Contains(value.AsString());
+            return Result.NewLiteral(hasMatch);
+        }
+
+        foreach (var matchExpr in expr.Matches)
+        {
+            var matchValue = Evaluate(document, matchExpr, tableAlias);
+            if (EvaluateEquality(value, matchValue))
+            {
+                return Result.NewLiteral(true);
+            }
+        }
+            
+        return Result.NewLiteral(false);
     }
 
     [StructLayout(LayoutKind.Explicit)]
@@ -144,26 +243,60 @@ internal static class ValueEvaluator
         public static Result NewValue(Value value) => new() { _type = ResultType.Value, _value = value };
 
         public ResultType Type => _type;
+        public bool IsString() => _type == ResultType.Value ? _value.Type == JsonType.String : _type == ResultType.StringLiteral;
         public string AsString()
         {
+            if (_type == ResultType.Value)
+            {
+                var valueType = _value.Type;
+                if (valueType != JsonType.String)
+                {
+                    throw new InvalidOperationException($"cannot convert {_type} ({valueType}) to string");
+                }
+
+                return _value.GetString();
+            }
+            
             if (_type != ResultType.StringLiteral)
             {
-                throw new InvalidOperationException($"cannot convert {_type} to boolean");
+                throw new InvalidOperationException($"cannot convert {_type} to string");
             }
 
             return _stringLiteral;
         }
         public decimal AsNumber()
         {
+            if (_type == ResultType.Value)
+            {
+                var valueType = _value.Type;
+                if (valueType != JsonType.Number)
+                {
+                    throw new InvalidOperationException($"cannot convert {_type} ({valueType}) to number");
+                }
+
+                return _value.GetDecimal();
+            }
+            
             if (_type != ResultType.NumberLiteral)
             {
-                throw new InvalidOperationException($"cannot convert {_type} to boolean");
+                throw new InvalidOperationException($"cannot convert {_type} to number");
             }
 
             return _numberLiteral;
         }
         public bool AsBoolean()
         {
+            if (_type == ResultType.Value)
+            {
+                var valueType = _value.Type;
+                if (valueType != JsonType.Boolean)
+                {
+                    throw new InvalidOperationException($"cannot convert {_type} ({valueType}) to boolean");
+                }
+
+                return _value.GetBool();
+            }
+            
             if (_type != ResultType.BooleanLiteral)
             {
                 throw new InvalidOperationException($"cannot convert {_type} to boolean");

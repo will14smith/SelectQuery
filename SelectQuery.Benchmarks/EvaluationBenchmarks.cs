@@ -19,12 +19,12 @@ public class EvaluationBenchmarks
     {
         get
         {
-            var smallRecords = Enumerable.Repeat("{\"a\":1,\"b\":2,\"c\":3,\"d\":{\"d1\":\"d1\",\"d2\":{\"d2.2\":true},\"d3\":[1,2,3]}}", 100);
+            var smallRecords = Enumerable.Repeat("{\"a\":1,\"b\":2,\"c\":3,\"c0\":\"str0\",\"d\":{\"d1\":\"d1\",\"d2\":{\"d2.2\":true},\"d3\":[1,2,3]}}", 100);
 
             var largeRecords = new List<string>();
             for (var i = 0; i < 5_000; i++)
             {
-                largeRecords.Add($"{{\"a\":1,\"b\":2,\"c\":3,{string.Join(",", Enumerable.Range(0, 300).Select(x => $"\"c{x}\": \"str{((x^i)*7)}\""))}}}");
+                largeRecords.Add($"{{\"a\":1,\"b\":2,\"c\":3,{string.Join(",", Enumerable.Range(0, 300).Select(x => $"\"c{x}\": \"str{(x^i)*7}\""))}}}");
             }
             
             yield return new TestCaseInput("small", Encoding.UTF8.GetBytes(RecordsToString(smallRecords)));
