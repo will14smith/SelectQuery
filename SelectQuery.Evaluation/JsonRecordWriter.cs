@@ -1,74 +1,88 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.IO;
+using System.Text;
 using SelectParser.Queries;
-using Utf8Json;
-using Utf8Json.Resolvers;
+using SimdJsonDotNet.Model;
 
 namespace SelectQuery.Evaluation;
 
-public class JsonRecordWriter(FromClause from, SelectClause select)
+internal abstract class JsonRecordWriter : IDisposable
 {
-    private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new();
+    private readonly MemoryStream _stream = new();
+    
+    public static JsonRecordWriter Create(Query query) =>
+        query.Select switch
+        {
+            SelectClause.Star => new StarWriter(),
+            SelectClause.List list => new ListWriter(query, list),
+            _ => throw new ArgumentOutOfRangeException(nameof(query))
+        };
 
-    public void Write(ref JsonWriter writer, object obj)
+    public abstract void EvaluateSelect(DocumentReference record);
+
+    public virtual void Dispose()
     {
-        if (select is not SelectClause.List list)
-        {
-            WriteStar(ref writer, obj);
-        }
-        else
-        {
-            writer.WriteBeginObject();
-            WriteColumns(ref writer, list.Columns, obj);
-            writer.WriteEndObject();
-        }
+        _stream.Dispose();
     }
 
-    private static void WriteStar(ref JsonWriter writer, object obj)
-    {
-        Formatter.Serialize(ref writer, obj, StandardResolver.Default);
-    }
+    public byte[] ToArray() => _stream.ToArray();
 
-    private void WriteColumns(ref JsonWriter writer, IReadOnlyList<Column> columns, object obj)
+    private class StarWriter : JsonRecordWriter
     {
-        var hasWritten = false;
-        for (var index = 0; index < columns.Count; index++)
+        public override void EvaluateSelect(DocumentReference record)
         {
-            var column = columns[index];
-
-            var result = ExpressionEvaluator.EvaluateOnTable<object>(column.Expression, from, obj);
-            if (!result.IsSome)
+            var rawJson = record.GetRawJson();
+            _stream.Write(rawJson);
+            
+            // since the raw json potentially includes trailing whitespace, we'll only add it if needed
+            if (rawJson[^1] != '\n')
             {
-                continue;
+                _stream.WriteByte((byte)'\n');
+            }
+        }
+    }
+
+    private class ListWriter(Query query, SelectClause.List list) : JsonRecordWriter
+    {
+        public override void EvaluateSelect(DocumentReference record)
+        {
+            _stream.WriteByte((byte) '{');
+
+            for (var index = 0; index < list.Columns.Count; index++)
+            {
+                var column = list.Columns[index];
+                
+                // TODO pre-calculate all this
+                if (index > 0)
+                {
+                    _stream.Write(",\""u8);
+                }
+                else
+                {
+                    _stream.WriteByte((byte)'"');
+                }
+                var name = GetColumnName(index, column);
+                // TODO escape if needed
+                _stream.Write(Encoding.UTF8.GetBytes(name));
+                _stream.Write("\":"u8);
+                
+                // TODO pre-calculate any constant operations
+                var value = ValueEvaluator.Evaluate(record, column.Expression);
+                value.Write(_stream);
             }
 
-            if (hasWritten)
-            {
-                writer.WriteValueSeparator();
-            }
-            hasWritten = true;
-
-            writer.WritePropertyName(GetColumnName(index, column));
-            Formatter.Serialize(ref writer, result.AsT0, StandardResolver.Default);
+            _stream.Write("}\n"u8);
         }
     }
-
-    internal static string GetColumnName(int index, Column column)
-    {
-        if (column.Alias.IsSome)
-        {
-            return column.Alias.AsT0;
-        }
-
-        var expression = column.Expression;
-        return GetColumnName(index, expression);
-    }
+    
+    internal static string GetColumnName(int index, Column column) => 
+        column.Alias.IsSome ? column.Alias.Value : GetColumnName(index, column.Expression);
 
     private static string GetColumnName(int index, Expression expression) =>
         expression switch
         {
             Expression.Identifier identifier => identifier.Name,
-            Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name,
+            Expression.Qualified qualified => qualified.Identifiers[^1].Name,
             // default is _N for the Nth column (1 indexed)
             _ => $"_{index + 1}"
         };

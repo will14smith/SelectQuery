@@ -1,17 +1,17 @@
-﻿using SelectParser;
+﻿using System;
+using System.IO;
+using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
+using SelectParser;
 using SelectParser.Queries;
-using Utf8Json;
-using Utf8Json.Resolvers;
+using SimdJsonDotNet.Model;
 
 namespace SelectQuery.Evaluation;
 
 public class JsonLinesEvaluator
 {
-    private static readonly IJsonFormatter<object> Formatter = StandardResolver.Default.GetFormatter<object>();
-    private static readonly ExpressionEvaluator ExpressionEvaluator = new ExpressionEvaluator();
-
     private readonly Query _query;
-    private readonly JsonRecordWriter _recordWriter;
+    // private readonly JsonRecordWriter _recordWriter;
 
     public JsonLinesEvaluator(Query query)
     {
@@ -20,100 +20,130 @@ public class JsonLinesEvaluator
         validator.ThrowIfErrors();
             
         _query = query;
-        _recordWriter = new JsonRecordWriter(query.From, query.Select);
+        // _recordWriter = new JsonRecordWriter(query.From, query.Select);
     }
 
     public byte[] Run(byte[] file)
     {
-        var reader = new JsonReader(file);
-        var writer = new JsonWriter();
-
+        using var writer = JsonRecordWriter.Create(_query);
+        var stream = SimdJsonDotNet.Parser.ParseMany(file);
+        
         if (QueryValidator.IsAggregateQuery(_query))
         {
-            ProcessAggregate(ref reader, ref writer);
+            // ProcessAggregate(ref reader, ref writer);
+            throw new NotImplementedException();
         }
         else
         {
-            var recordsProcessed = 0;
-            var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
-
-            while (ProcessRecord(ref reader, ref writer, ref recordsProcessed))
+            var state = new State
             {
-                if (recordsProcessed >= limit)
+                Limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue)
+            };
+
+            using var reader = stream.GetEnumerator();
+
+            while (!state.IsLimitReached())
+            {
+                if (!reader.MoveNext())
                 {
+                    // no more input records to process
                     break;
                 }
-            }
-        }
-
-        return writer.ToUtf8ByteArray();
-    }
-        
-    private void ProcessAggregate(ref JsonReader reader, ref JsonWriter writer)
-    {
-        var state = new AggregateProcessor(_query);
-            
-        var recordsProcessed = 0;
-        var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
-            
-        while (true)
-        {
-            var readResult = ReadRecord(ref reader);
-            if (readResult.IsNone)
-            {
-                break;
-            }
-
-            var record = readResult.AsT0;
-            if (TestPredicate(record))
-            {
-                if (recordsProcessed++ >= limit)
+                
+                var record = reader.Current;
+                if(!TestPredicate(record))
                 {
-                    break;
+                    continue;
                 }
-                    
-                state.ProcessRecord(record);
+
+                writer.EvaluateSelect(record);
+                state.Count++;
             }
         }
 
-        state.Write(ref writer);
-        writer.WriteRaw((byte) '\n');
+        return writer.ToArray();
     }
+    
+    private struct State
+    {
+        public int Count;
+        public int Limit;
         
-    private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer, ref int recordsProcessed)
-    {
-        var readResult = ReadRecord(ref reader);
-        if (readResult.IsNone)
-        {
-            return false;
-        }
-
-        var record = readResult.AsT0;
-        if (TestPredicate(record))
-        {
-            recordsProcessed++;
-            _recordWriter.Write(ref writer, record);
-            writer.WriteRaw((byte) '\n');
-        }
-
-        return true;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool IsLimitReached() => Count >= Limit;
     }
+    
+    // private void ProcessAggregate(ref JsonReader reader, ref JsonWriter writer)
+    // {
+    //     var state = new AggregateProcessor(_query);
+    //         
+    //     var recordsProcessed = 0;
+    //     var limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue);
+    //         
+    //     while (true)
+    //     {
+    //         var readResult = ReadRecord(ref reader);
+    //         if (readResult.IsNone)
+    //         {
+    //             break;
+    //         }
+    //
+    //         var record = readResult.AsT0;
+    //         if (TestPredicate(record))
+    //         {
+    //             if (recordsProcessed++ >= limit)
+    //             {
+    //                 break;
+    //             }
+    //                 
+    //             state.ProcessRecord(record);
+    //         }
+    //     }
+    //
+    //     state.Write(ref writer);
+    //     writer.WriteRaw((byte) '\n');
+    // }
+        
+    // private bool ProcessRecord(ref JsonReader reader, ref JsonWriter writer, ref int recordsProcessed)
+    // {
+    //     var readResult = ReadRecord(ref reader);
+    //     if (readResult.IsNone)
+    //     {
+    //         return false;
+    //     }
+    //
+    //     var record = readResult.AsT0;
+    //     if (TestPredicate(record))
+    //     {
+    //         recordsProcessed++;
+    //         _recordWriter.Write(ref writer, record);
+    //         writer.WriteRaw((byte) '\n');
+    //     }
+    //
+    //     return true;
+    // }
 
-    private Option<object> ReadRecord(ref JsonReader reader)
+    // private Option<object> ReadRecord(ref JsonReader reader)
+    // {
+    //     reader.SkipWhiteSpace();
+    //     if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
+    //     {
+    //         return new None();
+    //     }
+    //
+    //     return Formatter.Deserialize(ref reader, StandardResolver.Default);
+    // }
+
+    private bool TestPredicate(in DocumentReference document)
     {
-        reader.SkipWhiteSpace();
-        if (reader.GetCurrentOffsetUnsafe() >= reader.GetBufferUnsafe().Length)
+        if (_query.Where.IsNone)
         {
-            return new None();
+            return true;
         }
-
-        return Formatter.Deserialize(ref reader, StandardResolver.Default);
-    }
-
-    private bool TestPredicate(object record)
-    {
-        var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
-
-        return wherePassed.IsSome && wherePassed.AsT0;
+        
+        throw new NotImplementedException();
+        // var wherePassed = _query.Where.Match(where => ExpressionEvaluator.EvaluateOnTable<bool>(where.Condition, _query.From, record), _ => true);
+        //
+        // return wherePassed.IsSome && wherePassed.AsT0;
     }
 }

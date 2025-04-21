@@ -6,9 +6,20 @@ using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
 
-public class ExpressionEvaluator
+public static class ExpressionEvaluator
 {
-    public Option<T> Evaluate<T>(Expression expression, object obj)
+    public static Option<T> EvaluateOnTable<T>(Expression expression, FromClause from, object obj)
+    {
+        var tableName = from.Alias.Match(alias => alias, _ => "s3object");
+        var input = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+        {
+            { tableName, obj }
+        };
+
+        return Evaluate<T>(expression, input);
+    }
+    
+    public static Option<T> Evaluate<T>(Expression expression, object obj)
     {
         var value = expression switch
         {
@@ -33,22 +44,22 @@ public class ExpressionEvaluator
         if (value.Value is double dbl) return (T)(object)Convert.ToDecimal(dbl);
         return value;
     }
-    private string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
+    private static string EvaluateStringLiteral(Expression.StringLiteral strLiteral)
     {
         return strLiteral.Value;
     }
 
-    private decimal EvaluateNumberLiteral(Expression.NumberLiteral numLiteral)
+    private static decimal EvaluateNumberLiteral(Expression.NumberLiteral numLiteral)
     {
         return numLiteral.Value;
     }
 
-    private bool EvaluateBooleanLiteral(Expression.BooleanLiteral boolLiteral)
+    private static bool EvaluateBooleanLiteral(Expression.BooleanLiteral boolLiteral)
     {
         return boolLiteral.Value;
     }
 
-    private Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
+    private static Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
     {
         if (obj is null)
         {
@@ -74,7 +85,7 @@ public class ExpressionEvaluator
         throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
     }
 
-    private Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
+    private static Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
     {
         for (var index = 0; index < qualified.Identifiers.Count; index++)
         {
@@ -92,7 +103,7 @@ public class ExpressionEvaluator
         return (T) obj;
     }
     
-    private Option<T> EvaluateFunction<T>(Function function, object obj)
+    private static Option<T> EvaluateFunction<T>(Function function, object obj)
     {
         if (function is not ScalarFunction scalar)
         {
@@ -105,7 +116,7 @@ public class ExpressionEvaluator
         return FunctionEvaluator.Evaluate<T>(name, arguments);
     }
 
-    private Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)
+    private static Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)
     {
         return (unary.Operator switch
         {
@@ -116,7 +127,7 @@ public class ExpressionEvaluator
         });
     }
 
-    private T EvaluateBinary<T>(Expression.Binary binary, object obj)
+    private static T EvaluateBinary<T>(Expression.Binary binary, object obj)
     {
         var leftOpt = Evaluate<object>(binary.Left, obj);
         var rightOpt = Evaluate<object>(binary.Right, obj);
@@ -155,7 +166,7 @@ public class ExpressionEvaluator
         });
     }
 
-    private object EvaluateAddition(Option<object> left, Option<object> right)
+    private static object EvaluateAddition(Option<object> left, Option<object> right)
     {
         if (left.Value is decimal leftNum && right.Value is decimal rightNum)
         {
@@ -168,17 +179,17 @@ public class ExpressionEvaluator
         return $"{left.Value}{right.Value}";
     }
 
-    private bool EvaluateEquality(object left, object right)
+    private static bool EvaluateEquality(object left, object right)
     {
         return Equals(left, right);
     }
 
-    private bool EvaluateBetween(Expression.Between between, object obj)
+    private static bool EvaluateBetween(Expression.Between between, object obj)
     {
         throw new NotImplementedException();
     }
 
-    private bool EvaluateIsNull(Expression.IsNull isNull, object obj)
+    private static bool EvaluateIsNull(Expression.IsNull isNull, object obj)
     {
         var value = Evaluate<object>(isNull.Expression, obj);
 
@@ -187,7 +198,7 @@ public class ExpressionEvaluator
         return hasValue == isNull.Negate;
     }
         
-    private bool EvaluatePresence(Expression.Presence presence, object obj)
+    private static bool EvaluatePresence(Expression.Presence presence, object obj)
     {
         var value = Evaluate<object>(presence.Expression, obj);
 
@@ -196,7 +207,7 @@ public class ExpressionEvaluator
         return isMissing == presence.Negate;
     }
 
-    private bool EvaluateIn(Expression.In inExpr, object obj)
+    private static bool EvaluateIn(Expression.In inExpr, object obj)
     {
         if (inExpr.StringMatches is not null)
         {
@@ -223,7 +234,7 @@ public class ExpressionEvaluator
         }
     }
 
-    private bool EvaluateLike(Expression.Like like, object obj)
+    private static bool EvaluateLike(Expression.Like like, object obj)
     {
         var pattern = EvaluateToString(like.Pattern, obj);
         var escape = like.Escape.SelectMany(x => EvaluateToString(x, obj));
@@ -243,7 +254,7 @@ public class ExpressionEvaluator
         return LikeMatcher.IsMatch(pattern.AsT0, escapeChar, value.AsT0);
     }
 
-    private Option<string> EvaluateToString(Expression expr, object obj)
+    private static Option<string> EvaluateToString(Expression expr, object obj)
     {
         var valueObj = Evaluate<object>(expr, obj);
         if (valueObj.IsNone)
@@ -257,19 +268,5 @@ public class ExpressionEvaluator
         }
 
         return valueStr;
-    }
-}
-
-public static class ExpressionEvaluatorExtensions
-{
-    public static Option<T> EvaluateOnTable<T>(this ExpressionEvaluator evaluator, Expression expression, FromClause from, object obj)
-    {
-        var tableName = from.Alias.Match(alias => alias, _ => "s3object");
-        var input = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
-        {
-            { tableName, obj }
-        };
-
-        return evaluator.Evaluate<T>(expression, input);
     }
 }
