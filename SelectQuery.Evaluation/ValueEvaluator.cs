@@ -240,7 +240,8 @@ internal static class ValueEvaluator
         [FieldOffset(32)] private Value _value;
         
         public static Result Missing() => new() { _type = ResultType.None };
-
+        public static Result Null() => new() { _type = ResultType.Null };
+        
         public static Result NewLiteral(string stringValue) => new() { _type = ResultType.StringLiteral, _stringLiteral = stringValue };
         public static Result NewLiteral(decimal numberValue) => new() { _type = ResultType.NumberLiteral, _numberLiteral = numberValue };
         public static Result NewLiteral(bool booleanValue) => new() { _type = ResultType.BooleanLiteral, _booleanLiteral = booleanValue };
@@ -324,7 +325,8 @@ internal static class ValueEvaluator
             switch (_type)
             {
                 case ResultType.None: throw new InvalidOperationException();
-                
+                case ResultType.Null: writer.Write("null"u8); break;
+
                 case ResultType.StringLiteral: WriteString(writer); break;
                 case ResultType.NumberLiteral: WriteNumber(writer); break;
                 case ResultType.BooleanLiteral: writer.Write(_booleanLiteral ? "true"u8 : "false"u8); break;
@@ -357,11 +359,13 @@ internal static class ValueEvaluator
         }
         
         private void WriteValue(Stream writer) => writer.Write(_value.GetRawJson());
+        
     }
     
     internal enum ResultType
     {
         None = 0,
+        Null,
         
         StringLiteral,
         NumberLiteral,

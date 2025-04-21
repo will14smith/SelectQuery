@@ -1,5 +1,4 @@
-﻿using System;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
@@ -7,7 +6,6 @@ namespace SelectQuery.Evaluation;
 public class JsonLinesEvaluator
 {
     private readonly Query _query;
-    // private readonly JsonRecordWriter _recordWriter;
 
     public JsonLinesEvaluator(Query query)
     {
@@ -16,7 +14,6 @@ public class JsonLinesEvaluator
         validator.ThrowIfErrors();
             
         _query = query;
-        // _recordWriter = new JsonRecordWriter(query.From, query.Select);
     }
 
     public byte[] Run(byte[] file)
@@ -25,40 +22,47 @@ public class JsonLinesEvaluator
         using var predicate = PredicateEvaluator.Create(_query);
         
         var stream = SimdJsonDotNet.Parser.ParseMany(file);
-        
-        if (QueryValidator.IsAggregateQuery(_query))
-        {
-            // ProcessAggregate(ref reader, ref writer);
-            throw new NotImplementedException();
-        }
-        else
-        {
-            var state = new State
-            {
-                Limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue)
-            };
 
-            using var reader = stream.GetEnumerator();
+        var isAggregateQuery = QueryValidator.IsAggregateQuery(_query);
+        var state = new State
+        {
+            Limit = _query.Limit.Match(x => x.Limit, _ => int.MaxValue),
+            Aggregate = isAggregateQuery ? new AggregateProcessor(_query) : null,
+        };
 
-            while (!state.IsLimitReached())
+        using var reader = stream.GetEnumerator();
+
+        while (!state.IsLimitReached())
+        {
+            if (!reader.MoveNext())
             {
-                if (!reader.MoveNext())
-                {
-                    // no more input records to process
-                    break;
-                }
-                
-                var record = reader.Current;
-                if(!predicate.Test(record))
-                {
-                    continue;
-                }
-                
-                writer.EvaluateSelect(record);
-                state.Count++;
+                // no more input records to process
+                break;
             }
+                
+            var record = reader.Current;
+            if(!predicate.Test(record))
+            {
+                continue;
+            }
+
+            if (isAggregateQuery)
+            {
+                state.Aggregate!.ProcessRecord(record);
+            }
+            else
+            {
+                writer.EvaluateSelect(record);
+            }
+
+            state.Count++;
         }
 
+        if (isAggregateQuery)
+        {
+            state.Aggregate.Write(writer);
+        }
+        
         return writer.ToArray();
     }
     
@@ -66,6 +70,7 @@ public class JsonLinesEvaluator
     {
         public int Count;
         public int Limit;
+        public AggregateProcessor? Aggregate;
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsLimitReached() => Count >= Limit;

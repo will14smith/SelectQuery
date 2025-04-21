@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text;
 using SelectParser.Queries;
 using SimdJsonDotNet.Memory;
@@ -20,6 +21,12 @@ internal abstract class JsonRecordWriter : IDisposable
             _ => throw new ArgumentOutOfRangeException(nameof(query))
         };
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void BeginRow() => _stream.WriteByte((byte) '{');
+    public abstract void WriteColumn(int index, ValueEvaluator.Result value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void EndRow() => _stream.Write("}\n"u8);
+    
     public abstract void EvaluateSelect(DocumentReference record);
 
     public virtual void Dispose()
@@ -31,6 +38,7 @@ internal abstract class JsonRecordWriter : IDisposable
 
     private class StarWriter : JsonRecordWriter
     {
+        public override void WriteColumn(int index, ValueEvaluator.Result value) => throw new NotSupportedException();
         public override void EvaluateSelect(DocumentReference record)
         {
             var rawJson = record.GetRawJson();
@@ -56,27 +64,31 @@ internal abstract class JsonRecordWriter : IDisposable
             _tableAlias = query.From.Alias.Match(alias => alias, _ => "s3object");
             (_metadataBuffer, _list) = BuildBuffer(list);
         }
-        
-        public override void EvaluateSelect(DocumentReference record)
-        {
-            _stream.WriteByte((byte) '{');
 
-            var metadataBuffer = _metadataBuffer.AsSpan();
-            
-            foreach (var column in _list)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public override void WriteColumn(int index, ValueEvaluator.Result value)
+        {
+            if (value.Type is ValueEvaluator.ResultType.None)
             {
-                // TODO pre-calculate any constant operations
-                var value = ValueEvaluator.Evaluate(record, column.Expression, _tableAlias);
-                if (value.Type is ValueEvaluator.ResultType.None)
-                {
-                    continue;
-                }
-                
-                column.WriteStart(metadataBuffer, _stream);
-                value.Write(_stream);
+                return;
             }
 
-            _stream.Write("}\n"u8);
+            _list[index].WriteStart(_metadataBuffer, _stream);
+            value.Write(_stream);
+        }
+
+        public override void EvaluateSelect(DocumentReference record)
+        {
+            BeginRow();
+
+            for (var index = 0; index < _list.Count; index++)
+            {
+                // TODO pre-calculate any constant operations
+                var value = ValueEvaluator.Evaluate(record, _list[index].Expression, _tableAlias);
+                WriteColumn(index, value);
+            }
+
+            EndRow();
         }
 
         private static (PooledList<byte>, List<ColumnMetadata>) BuildBuffer(SelectClause.List list)
@@ -122,7 +134,7 @@ internal abstract class JsonRecordWriter : IDisposable
         {
             public Expression Expression { get; } = expression;
 
-            public void WriteStart(ReadOnlySpan<byte> buffer, MemoryStream stream) => stream.Write(buffer[startBufferRange]);
+            public void WriteStart(PooledList<byte> buffer, MemoryStream stream) => stream.Write(buffer.AsSpan(startBufferRange));
         }
     }
     

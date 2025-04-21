@@ -24,7 +24,13 @@ public readonly struct Option<T> : IEquatable<Option<T>>
     public T? Value { get; }
     public T AsT0 => HasValue ? Value! : throw new InvalidOperationException();
     
+#if !NETSTANDARD
+    [MemberNotNullWhen(true, nameof(Value))]
+#endif
     public bool IsSome => HasValue;
+#if !NETSTANDARD
+    [MemberNotNullWhen(false, nameof(Value))]
+#endif
     public bool IsNone => !HasValue;
     
     public static implicit operator Option<T>(T t) => new(t);
