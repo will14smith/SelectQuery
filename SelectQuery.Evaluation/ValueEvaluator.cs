@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Buffers.Text;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -52,7 +51,7 @@ internal static class ValueEvaluator
             obj = next.GetObject(); 
         }
         
-        return obj.TryFindFieldUnordered(qualified.Identifiers[^1].Name, out var value) ? Result.NewValue(value) : Result.Missing();
+        return obj.TryFindFieldUnordered(qualified.Identifiers[qualified.Identifiers.Count - 1].Name, out var value) ? Result.NewValue(value) : Result.Missing();
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -320,7 +319,7 @@ internal static class ValueEvaluator
             return _value;
         }
         
-        public void Write(Stream writer)
+        public void Write(JsonRecordWriter writer)
         {
             switch (_type)
             {
@@ -337,15 +336,15 @@ internal static class ValueEvaluator
             }
         }
 
-        private void WriteString(Stream writer)
+        private void WriteString(JsonRecordWriter writer)
         {
-            writer.WriteByte((byte)'"');
+            writer.Write((byte)'"');
             // TODO escape if needed
             writer.Write(Encoding.UTF8.GetBytes(_stringLiteral));
-            writer.WriteByte((byte)'"');
+            writer.Write((byte)'"');
         }
         
-        private void WriteNumber(Stream writer)
+        private void WriteNumber(JsonRecordWriter writer)
         {
             const int maxDecimalLength = 32;
             Span<byte> buffer = stackalloc byte[maxDecimalLength];
@@ -354,11 +353,15 @@ internal static class ValueEvaluator
             {
                 throw new NotImplementedException("probably fallback to allocating a string");
             }
-            
+
+#if NETSTANDARD
+            writer.Write(buffer.Slice(0, bytesConsumed));
+#else
             writer.Write(buffer[..bytesConsumed]);
+#endif
         }
         
-        private void WriteValue(Stream writer) => writer.Write(_value.GetRawJson());
+        private void WriteValue(JsonRecordWriter writer) => writer.Write(_value.GetRawJson());
         
     }
     

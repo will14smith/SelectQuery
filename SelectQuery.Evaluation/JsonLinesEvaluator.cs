@@ -60,7 +60,7 @@ public class JsonLinesEvaluator
 
         if (isAggregateQuery)
         {
-            state.Aggregate.Write(writer);
+            state.Aggregate!.Write(writer);
         }
         
         return writer.ToArray();

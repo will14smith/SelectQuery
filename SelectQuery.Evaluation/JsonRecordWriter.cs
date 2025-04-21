@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -25,7 +26,32 @@ internal abstract class JsonRecordWriter : IDisposable
     public void BeginRow() => _stream.WriteByte((byte) '{');
     public abstract void WriteColumn(int index, ValueEvaluator.Result value);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void EndRow() => _stream.Write("}\n"u8);
+    public void EndRow() => Write("}\n"u8);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(byte value) => _stream.WriteByte(value);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Write(ReadOnlySpan<byte> buffer)
+    {
+#if NETSTANDARD
+        var length = buffer.Length;
+        var tempBuffer = ArrayPool<byte>.Shared.Rent(length);
+        
+        try
+        {
+            buffer.CopyTo(tempBuffer);
+
+            _stream.Write(tempBuffer, 0, length);
+        }
+        finally
+        {
+            ArrayPool<byte>.Shared.Return(tempBuffer);
+        }
+#else 
+        _stream.Write(buffer);
+#endif
+
+    }
     
     public abstract void EvaluateSelect(DocumentReference record);
 
@@ -42,10 +68,10 @@ internal abstract class JsonRecordWriter : IDisposable
         public override void EvaluateSelect(DocumentReference record)
         {
             var rawJson = record.GetRawJson();
-            _stream.Write(rawJson);
+            Write(rawJson);
             
             // since the raw json potentially includes trailing whitespace, we'll only add it if needed
-            if (rawJson[^1] != '\n')
+            if (rawJson[rawJson.Length - 1] != '\n')
             {
                 _stream.WriteByte((byte)'\n');
             }
@@ -73,8 +99,8 @@ internal abstract class JsonRecordWriter : IDisposable
                 return;
             }
 
-            _list[index].WriteStart(_metadataBuffer, _stream);
-            value.Write(_stream);
+            _list[index].WriteStart(_metadataBuffer, this);
+            value.Write(this);
         }
 
         public override void EvaluateSelect(DocumentReference record)
@@ -116,8 +142,7 @@ internal abstract class JsonRecordWriter : IDisposable
                 buffer.AddRange(Encoding.UTF8.GetBytes(name));
                 buffer.AddRange("\":"u8);
                 
-                var startBufferRange = new Range(start, buffer.Length);
-                var metadataEntry = new ColumnMetadata(column.Expression, startBufferRange);
+                var metadataEntry = new ColumnMetadata(column.Expression, start, buffer.Length);
                 metadata.Add(metadataEntry);
             }
             
@@ -130,22 +155,22 @@ internal abstract class JsonRecordWriter : IDisposable
             _metadataBuffer.Dispose();
         }
         
-        private readonly struct ColumnMetadata(Expression expression, Range startBufferRange)
+        private readonly struct ColumnMetadata(Expression expression, int startIndex, int startLength)
         {
             public Expression Expression { get; } = expression;
 
-            public void WriteStart(PooledList<byte> buffer, MemoryStream stream) => stream.Write(buffer.AsSpan(startBufferRange));
+            public void WriteStart(PooledList<byte> buffer, ListWriter writer) => writer.Write(buffer.AsSpan(startIndex, startLength));
         }
     }
     
     internal static string GetColumnName(int index, Column column) => 
-        column.Alias.IsSome ? column.Alias.Value : GetColumnName(index, column.Expression);
+        column.Alias.IsSome ? column.Alias.Value! : GetColumnName(index, column.Expression);
 
     private static string GetColumnName(int index, Expression expression) =>
         expression switch
         {
             Expression.Identifier identifier => identifier.Name,
-            Expression.Qualified qualified => qualified.Identifiers[^1].Name,
+            Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name,
             // default is _N for the Nth column (1 indexed)
             _ => $"_{index + 1}"
         };

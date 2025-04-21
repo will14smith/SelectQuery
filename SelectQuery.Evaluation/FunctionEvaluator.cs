@@ -6,7 +6,7 @@ namespace SelectQuery.Evaluation;
 
 internal class FunctionEvaluator
 {
-    public static Option<T> Evaluate<T>(string name, IReadOnlyList<Option<object>> arguments)
+    public static Option<T?> Evaluate<T>(string name, IReadOnlyList<Option<object?>> arguments)
     {
         var normalisedName = name?.ToLowerInvariant();
 
@@ -18,7 +18,7 @@ internal class FunctionEvaluator
         }
     }
 
-    private static Option<T> Lower<T>(IReadOnlyList<Option<object>> arguments)
+    private static Option<T?> Lower<T>(IReadOnlyList<Option<object?>> arguments)
     {
         if (arguments.Count != 1)
         {
@@ -41,6 +41,6 @@ internal class FunctionEvaluator
 
         var stringValue = value as string;
 
-        return (T)(object)stringValue?.ToLowerInvariant();
+        return (T?)(object?)stringValue?.ToLowerInvariant();
     }
 }

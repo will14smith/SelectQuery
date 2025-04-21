@@ -31,10 +31,8 @@ internal class AggregateProcessor(Query query)
         writer.EndRow();
     }
 
-    private abstract class ColumnState(Column column)
+    private abstract class ColumnState
     {
-        public Column Column { get; } = column;
-
         public static IReadOnlyList<ColumnState> CreateForQuery(Query query)
         {
             var states = new List<ColumnState>();
@@ -42,13 +40,13 @@ internal class AggregateProcessor(Query query)
             var columns = ((SelectClause.List)query.Select).Columns;
             foreach (var column in columns)
             {
-                states.Add(CreateForColumn(query, column));
+                states.Add(CreateForColumn(column));
             }
                         
             return states;
         }
 
-        private static ColumnState CreateForColumn(Query query, Column column)
+        private static ColumnState CreateForColumn(Column column)
         {
             if (column.Expression is not Expression.FunctionExpression { Function: AggregateFunction aggregateFunction })
             {
@@ -57,11 +55,11 @@ internal class AggregateProcessor(Query query)
 
             return aggregateFunction switch
             {
-                AggregateFunction.Average average => new AverageColumnState(column, query, average),
-                AggregateFunction.Count count => new CountColumnState(column, query, count),
-                AggregateFunction.Max max => new MaxColumnState(column, query, max),
-                AggregateFunction.Min min => new MinColumnState(column, query, min),
-                AggregateFunction.Sum sum => new SumColumnState(column, query, sum),
+                AggregateFunction.Average average => new AverageColumnState(average),
+                AggregateFunction.Count count => new CountColumnState(count),
+                AggregateFunction.Max max => new MaxColumnState(max),
+                AggregateFunction.Min min => new MinColumnState(min),
+                AggregateFunction.Sum sum => new SumColumnState(sum),
                 _ => throw new ArgumentOutOfRangeException(nameof(aggregateFunction))
             };
         }
@@ -69,7 +67,7 @@ internal class AggregateProcessor(Query query)
         public abstract void ProcessRecord(DocumentReference record, string tableAlias);
         public abstract ValueEvaluator.Result GetResult();
         
-        private class AverageColumnState(Column column, Query query, AggregateFunction.Average average) : ColumnState(column)
+        private class AverageColumnState(AggregateFunction.Average average) : ColumnState
         {
             private int _count;
             private decimal _acc;
@@ -92,7 +90,7 @@ internal class AggregateProcessor(Query query)
                     : ValueEvaluator.Result.NewLiteral(_acc / _count);
         }
         
-        private class CountColumnState(Column column, Query query, AggregateFunction.Count count) : ColumnState(column)
+        private class CountColumnState(AggregateFunction.Count count) : ColumnState
         {
             private int _acc;
 
@@ -100,7 +98,7 @@ internal class AggregateProcessor(Query query)
             {
                 if (!count.Expression.IsNone)
                 {
-                    var value = ValueEvaluator.Evaluate(record, count.Expression.Value, tableAlias);
+                    var value = ValueEvaluator.Evaluate(record, count.Expression.Value!, tableAlias);
                     if (value.Type == ValueEvaluator.ResultType.None)
                     {
                         return;
@@ -113,7 +111,7 @@ internal class AggregateProcessor(Query query)
             public override ValueEvaluator.Result GetResult() => ValueEvaluator.Result.NewLiteral(_acc);
         }
         
-        private class MaxColumnState(Column column, Query query, AggregateFunction.Max max) : ColumnState(column)
+        private class MaxColumnState(AggregateFunction.Max max) : ColumnState
         {
             private decimal? _best;
 
@@ -138,7 +136,7 @@ internal class AggregateProcessor(Query query)
                     : ValueEvaluator.Result.Null();
         }
         
-        private class MinColumnState(Column column, Query query, AggregateFunction.Min min) : ColumnState(column)
+        private class MinColumnState(AggregateFunction.Min min) : ColumnState
         {
             private decimal? _best;
 
@@ -163,7 +161,7 @@ internal class AggregateProcessor(Query query)
                     : ValueEvaluator.Result.Null();
         }
         
-        private class SumColumnState(Column column, Query query, AggregateFunction.Sum sum) : ColumnState(column)
+        private class SumColumnState(AggregateFunction.Sum sum) : ColumnState
         {
             private decimal? _acc;
 

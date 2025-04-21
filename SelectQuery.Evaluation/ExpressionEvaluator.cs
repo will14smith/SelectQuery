@@ -8,10 +8,10 @@ namespace SelectQuery.Evaluation;
 
 public static class ExpressionEvaluator
 {
-    public static Option<T> EvaluateOnTable<T>(Expression expression, FromClause from, object obj)
+    public static Option<T?> EvaluateOnTable<T>(Expression expression, FromClause from, object? obj)
     {
         var tableName = from.Alias.Match(alias => alias, _ => "s3object");
-        var input = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase)
+        var input = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase)
         {
             { tableName, obj }
         };
@@ -19,13 +19,13 @@ public static class ExpressionEvaluator
         return Evaluate<T>(expression, input);
     }
     
-    public static Option<T> Evaluate<T>(Expression expression, object obj)
+    public static Option<T?> Evaluate<T>(Expression expression, object? obj)
     {
         var value = expression switch
         {
-            Expression.StringLiteral strLiteral => (T)(object)EvaluateStringLiteral(strLiteral),
-            Expression.NumberLiteral numLiteral => (T)(object)EvaluateNumberLiteral(numLiteral),
-            Expression.BooleanLiteral boolLiteral => (T)(object)EvaluateBooleanLiteral(boolLiteral),
+            Expression.StringLiteral strLiteral => (T?)(object?)EvaluateStringLiteral(strLiteral),
+            Expression.NumberLiteral numLiteral => (T?)(object?)EvaluateNumberLiteral(numLiteral),
+            Expression.BooleanLiteral boolLiteral => (T?)(object?)EvaluateBooleanLiteral(boolLiteral),
             Expression.Identifier identifier => EvaluateIdentifier<T>(identifier, obj),
             Expression.Qualified qualified => EvaluateQualified<T>(qualified, obj),
             Expression.FunctionExpression function => EvaluateFunction<T>(function.Function, obj),
@@ -59,7 +59,7 @@ public static class ExpressionEvaluator
         return boolLiteral.Value;
     }
 
-    private static Option<T> EvaluateIdentifier<T>(Expression.Identifier identifier, object obj)
+    private static Option<T?> EvaluateIdentifier<T>(Expression.Identifier identifier, object? obj)
     {
         if (obj is null)
         {
@@ -85,7 +85,7 @@ public static class ExpressionEvaluator
         throw new NotImplementedException($"don't know how to get identifier ({identifier.Name}) value from {obj?.GetType().FullName ?? "null"}");
     }
 
-    private static Option<T> EvaluateQualified<T>(Expression.Qualified qualified, object obj)
+    private static Option<T?> EvaluateQualified<T>(Expression.Qualified qualified, object? obj)
     {
         for (var index = 0; index < qualified.Identifiers.Count; index++)
         {
@@ -100,10 +100,10 @@ public static class ExpressionEvaluator
             obj = context.AsT0;
         }
         
-        return (T) obj;
+        return (T?) obj;
     }
     
-    private static Option<T> EvaluateFunction<T>(Function function, object obj)
+    private static Option<T?> EvaluateFunction<T>(Function function, object? obj)
     {
         if (function is not ScalarFunction scalar)
         {
@@ -116,25 +116,25 @@ public static class ExpressionEvaluator
         return FunctionEvaluator.Evaluate<T>(name, arguments);
     }
 
-    private static Option<T> EvaluateUnary<T>(Expression.Unary unary, object obj)
+    private static Option<T?> EvaluateUnary<T>(Expression.Unary unary, object? obj)
     {
-        return (unary.Operator switch
+        return unary.Operator switch
         {
-            UnaryOperator.Not => Evaluate<bool>(unary.Expression, obj).Select(value => (T) (object) !value),
-            UnaryOperator.Negate => Evaluate<decimal>(unary.Expression, obj).Select(value => (T) (object) -value),
+            UnaryOperator.Not => Evaluate<bool>(unary.Expression, obj).Select(value => (T?) (object?) !value),
+            UnaryOperator.Negate => Evaluate<decimal>(unary.Expression, obj).Select(value => (T?) (object?) -value),
 
             _ => throw new ArgumentOutOfRangeException()
-        });
+        };
     }
 
-    private static T EvaluateBinary<T>(Expression.Binary binary, object obj)
+    private static T? EvaluateBinary<T>(Expression.Binary binary, object? obj)
     {
         var leftOpt = Evaluate<object>(binary.Left, obj);
         var rightOpt = Evaluate<object>(binary.Right, obj);
 
         if (binary.Operator == BinaryOperator.Add)
         {
-            return (T) EvaluateAddition(leftOpt, rightOpt);
+            return (T?) EvaluateAddition(leftOpt, rightOpt);
         }
 
         var left = leftOpt.Value;
@@ -166,7 +166,7 @@ public static class ExpressionEvaluator
         });
     }
 
-    private static object EvaluateAddition(Option<object> left, Option<object> right)
+    private static object? EvaluateAddition(Option<object?> left, Option<object?> right)
     {
         if (left.Value is decimal leftNum && right.Value is decimal rightNum)
         {
@@ -184,12 +184,12 @@ public static class ExpressionEvaluator
         return Equals(left, right);
     }
 
-    private static bool EvaluateBetween(Expression.Between between, object obj)
+    private static bool EvaluateBetween(Expression.Between between, object? obj)
     {
         throw new NotImplementedException();
     }
 
-    private static bool EvaluateIsNull(Expression.IsNull isNull, object obj)
+    private static bool EvaluateIsNull(Expression.IsNull isNull, object? obj)
     {
         var value = Evaluate<object>(isNull.Expression, obj);
 
@@ -198,7 +198,7 @@ public static class ExpressionEvaluator
         return hasValue == isNull.Negate;
     }
         
-    private static bool EvaluatePresence(Expression.Presence presence, object obj)
+    private static bool EvaluatePresence(Expression.Presence presence, object? obj)
     {
         var value = Evaluate<object>(presence.Expression, obj);
 
@@ -207,7 +207,7 @@ public static class ExpressionEvaluator
         return isMissing == presence.Negate;
     }
 
-    private static bool EvaluateIn(Expression.In inExpr, object obj)
+    private static bool EvaluateIn(Expression.In inExpr, object? obj)
     {
         if (inExpr.StringMatches is not null)
         {
@@ -234,7 +234,7 @@ public static class ExpressionEvaluator
         }
     }
 
-    private static bool EvaluateLike(Expression.Like like, object obj)
+    private static bool EvaluateLike(Expression.Like like, object? obj)
     {
         var pattern = EvaluateToString(like.Pattern, obj);
         var escape = like.Escape.SelectMany(x => EvaluateToString(x, obj));
@@ -254,7 +254,7 @@ public static class ExpressionEvaluator
         return LikeMatcher.IsMatch(pattern.AsT0, escapeChar, value.AsT0);
     }
 
-    private static Option<string> EvaluateToString(Expression expr, object obj)
+    private static Option<string> EvaluateToString(Expression expr, object? obj)
     {
         var valueObj = Evaluate<object>(expr, obj);
         if (valueObj.IsNone)
