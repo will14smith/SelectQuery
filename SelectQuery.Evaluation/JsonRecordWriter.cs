@@ -142,7 +142,7 @@ internal abstract class JsonRecordWriter : IDisposable
                 buffer.AddRange(Encoding.UTF8.GetBytes(name));
                 buffer.AddRange("\":"u8);
                 
-                var metadataEntry = new ColumnMetadata(column.Expression, start, buffer.Length);
+                var metadataEntry = new ColumnMetadata(column.Expression, start, buffer.Length - start);
                 metadata.Add(metadataEntry);
             }
             

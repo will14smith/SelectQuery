@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using SelectParser.Queries;
 
 namespace SelectQuery.Evaluation;
@@ -16,7 +17,8 @@ public class JsonLinesEvaluator
         _query = query;
     }
 
-    public byte[] Run(byte[] file)
+    public byte[] Run(byte[] file) => Run(file.AsSpan());
+    public byte[] Run(ReadOnlySpan<byte> file)
     {
         using var writer = JsonRecordWriter.Create(_query);
         using var predicate = PredicateEvaluator.Create(_query);
