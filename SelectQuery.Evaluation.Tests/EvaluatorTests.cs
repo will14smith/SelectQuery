@@ -37,6 +37,7 @@ public class EvaluatorTests
     [InlineData("SELECT s.a, s.d.d3 FROM s3object s", @"{""a"":1,""d3"":[1,2,3]}")]
     [InlineData("SELECT s.a as b, s.b as a FROM s3object s", @"{""b"":1,""a"":2}")]
     [InlineData(@"SELECT s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"{""d1"":""d1"",""d2.2"":true}")]
+    [InlineData(@"SELECT s.d, s.d.d1, s.d.d2.""d2.2"" FROM s3object s", @"{""d"":{""d1"":""d1"",""d2"":{""d2.2"":true},""d3"":[1,2,3]},""d1"":""d1"",""d2.2"":true}")]
     public void ProjectionQueries(string queryString, string expectedRecord)
     {
         var query = ParseQuery(queryString);

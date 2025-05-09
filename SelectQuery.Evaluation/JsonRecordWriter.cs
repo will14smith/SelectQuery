@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -14,8 +15,8 @@ internal abstract class JsonRecordWriter : IDisposable
 {
     private readonly MemoryStream _stream = new();
     
-    public static JsonRecordWriter Create(Query query) =>
-        query.Select switch
+    public static JsonRecordWriter Create(Query query, QueryIndex index) =>
+        index.Select switch
         {
             SelectClause.Star => new StarWriter(),
             SelectClause.List list => new ListWriter(query, list),
@@ -53,7 +54,7 @@ internal abstract class JsonRecordWriter : IDisposable
 
     }
     
-    public abstract void EvaluateSelect(DocumentReference record);
+    public abstract void EvaluateSelect(DocumentReference record, DocumentIndex index);
 
     public virtual void Dispose()
     {
@@ -65,7 +66,7 @@ internal abstract class JsonRecordWriter : IDisposable
     private class StarWriter : JsonRecordWriter
     {
         public override void WriteColumn(int index, ValueEvaluator.Result value) => throw new NotSupportedException();
-        public override void EvaluateSelect(DocumentReference record)
+        public override void EvaluateSelect(DocumentReference record, DocumentIndex index)
         {
             var rawJson = record.GetRawJson();
             Write(rawJson);
@@ -103,15 +104,15 @@ internal abstract class JsonRecordWriter : IDisposable
             value.Write(this);
         }
 
-        public override void EvaluateSelect(DocumentReference record)
+        public override void EvaluateSelect(DocumentReference record, DocumentIndex index)
         {
             BeginRow();
 
-            for (var index = 0; index < _list.Count; index++)
+            for (var columnIndex = 0; columnIndex < _list.Count; columnIndex++)
             {
                 // TODO pre-calculate any constant operations
-                var value = ValueEvaluator.Evaluate(record, _list[index].Expression, _tableAlias);
-                WriteColumn(index, value);
+                var value = ValueIndexEvaluator.Evaluate(record, index, _list[columnIndex].Expression);
+                WriteColumn(columnIndex, value);
             }
 
             EndRow();
@@ -171,6 +172,7 @@ internal abstract class JsonRecordWriter : IDisposable
         {
             Expression.Identifier identifier => identifier.Name,
             Expression.Qualified qualified => qualified.Identifiers[qualified.Identifiers.Count - 1].Name,
+            IndexReference indexed => GetColumnName(index, indexed.Original),
             // default is _N for the Nth column (1 indexed)
             _ => $"_{index + 1}"
         };

@@ -361,8 +361,11 @@ internal static class ValueEvaluator
 #endif
         }
         
-        private void WriteValue(JsonRecordWriter writer) => writer.Write(_value.GetRawJson());
-        
+        private void WriteValue(JsonRecordWriter writer)
+        {
+            _value.Reset();
+            writer.Write(_value.GetRawJson());
+        }
     }
     
     internal enum ResultType
