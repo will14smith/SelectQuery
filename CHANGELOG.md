@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.3](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v2.0.2...SelectQuery-v2.0.3) (2026-08-13)
+
+
+### Bug Fixes
+
+* use correct path in deploy.yml ([#29](https://github.com/will14smith/SelectQuery/issues/29)) ([977f5b4](https://github.com/will14smith/SelectQuery/commit/977f5b47711ebb7b47a777b97bd500ac96c7acef))
+
 ## [2.0.2](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v2.0.1...SelectQuery-v2.0.2) (2026-08-13)
 
 
