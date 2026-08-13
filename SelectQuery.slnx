@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/Build/">
+    <File Path=".github/workflows/deploy.yml" />
+    <File Path=".github/workflows/test.yml" />
+  </Folder>
+  <Folder Name="/Docs/">
+    <File Path="README.md" />
+  </Folder>
+  <Project Path="SelectParser.Tests/SelectParser.Tests.csproj" />
+  <Project Path="SelectParser/SelectParser.csproj" />
+  <Project Path="SelectQuery.Benchmarks/SelectQuery.Benchmarks.csproj" />
+  <Project Path="SelectQuery.Evaluation.Tests/SelectQuery.Evaluation.Tests.csproj" />
+  <Project Path="SelectQuery.Evaluation/SelectQuery.Evaluation.csproj" />
+</Solution>
