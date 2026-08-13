@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v2.0.1...SelectQuery-v2.0.2) (2026-08-13)
+
+
+### Bug Fixes
+
+* add permissions for OIDC ([#27](https://github.com/will14smith/SelectQuery/issues/27)) ([cc17289](https://github.com/will14smith/SelectQuery/commit/cc172893dd430a8581e4899fce0f67ebdf0ef3a2))
+
 ## [2.0.1](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v2.0.0...SelectQuery-v2.0.1) (2026-08-13)
 
 
