@@ -58,4 +58,4 @@ jobs:
           user: ${{ secrets.NUGET_USER }}
 
       - name: Publish package to NuGet.org
-        run: dotnet nuget push ./*.nupkg --skip-duplicate --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
+        run: dotnet nuget push ./artifacts/*.nupkg --skip-duplicate --api-key ${{ steps.login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json
