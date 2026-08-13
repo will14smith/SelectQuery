@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v2.0.0...SelectQuery-v2.0.1) (2026-08-13)
+
+
+### Bug Fixes
+
+* use OIDC auth for publishing package ([#25](https://github.com/will14smith/SelectQuery/issues/25)) ([5ef80de](https://github.com/will14smith/SelectQuery/commit/5ef80dec789d551ca6d87eae1c9e5fbd5be5adf4))
+
 ## [2.0.0](https://github.com/will14smith/SelectQuery/compare/SelectQuery-v1.3.0...SelectQuery-v2.0.0) (2025-04-20)
 
 
